@@ -102,7 +102,7 @@ export async function signInWithGoogleAction() {
   }
 
   if (error) {
-    return { success: false, error: error.message }
+    redirect('/login?error=Could+not+authenticate+with+Google')
   }
 }
 
