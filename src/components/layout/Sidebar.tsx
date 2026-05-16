@@ -36,10 +36,8 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl gradient-primary">
-            <TrendingUp className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-bold gradient-text">FinanceOS</span>
+          <img src="/logo.png" alt="Finora Logo" className="w-9 h-9 object-contain" />
+          <span className="text-lg font-bold gradient-text">Finora</span>
         </div>
         {/* Mobile close button */}
         {onClose && (

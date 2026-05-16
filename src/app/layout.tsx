@@ -11,11 +11,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'FinanceOS — Personal Finance Manager',
-    template: '%s | FinanceOS',
+    default: 'Finora — Personal Finance Manager',
+    template: '%s | Finora',
   },
   description:
-    'Track your income, expenses, and transfers across multiple accounts. Gain insights into your spending habits with FinanceOS.',
+    'Track your income, expenses, and transfers across multiple accounts. Gain insights into your spending habits with Finora.',
   keywords: ['finance', 'budget', 'accounting', 'expense tracker', 'personal finance'],
 }
 

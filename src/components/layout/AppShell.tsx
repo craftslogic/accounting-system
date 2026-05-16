@@ -44,7 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-semibold gradient-text">FinanceOS</span>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Finora Logo" className="w-6 h-6 object-contain" />
+            <span className="font-semibold gradient-text">Finora</span>
+          </div>
         </header>
 
         {/* Page content */}

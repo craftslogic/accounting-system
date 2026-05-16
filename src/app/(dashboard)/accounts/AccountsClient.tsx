@@ -59,20 +59,21 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Accounts</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {activeAccounts.length} active account{activeAccounts.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full sm:w-auto items-center gap-2">
           {archivedAccounts.length > 0 && (
             <Button
               variant="outline"
               size="sm"
+              className="flex-1 sm:flex-none"
               onClick={() => setShowArchived(!showArchived)}
             >
               {showArchived ? 'Show Active' : `Archived (${archivedAccounts.length})`}
@@ -80,8 +81,8 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
           )}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary border-0 text-white">
-                <Plus className="w-4 h-4" />
+              <Button className="gradient-primary border-0 text-white flex-1 sm:flex-none">
+                <Plus className="w-4 h-4 mr-2" />
                 Add Account
               </Button>
             </DialogTrigger>

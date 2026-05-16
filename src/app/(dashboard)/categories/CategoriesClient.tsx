@@ -49,36 +49,36 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
           {cats.map((cat) => (
             <div
               key={cat.id}
-              className="group flex items-center justify-between p-4 rounded-xl border border-white/10 bg-card hover:bg-accent/50 transition-colors"
+              className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-white/10 bg-card hover:bg-accent/50 transition-colors gap-3"
             >
               <div className="flex items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                  className="w-10 h-10 rounded-xl flex shrink-0 items-center justify-center text-xl"
                   style={{ backgroundColor: `${cat.color}20`, border: `1px solid ${cat.color}40` }}
                 >
                   {cat.icon}
                 </div>
-                <div>
-                  <p className="text-sm font-medium">{cat.name}</p>
+                <div className="truncate">
+                  <p className="text-sm font-medium truncate">{cat.name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{cat.type}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center justify-end sm:opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-muted-foreground"
+                  className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground"
                   onClick={() => setEditCat(cat)}
                 >
-                  <Edit className="w-3.5 h-3.5" />
+                  <Edit className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                  className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground hover:text-red-400"
                   onClick={() => handleDelete(cat.id)}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                 </Button>
               </div>
             </div>
@@ -89,9 +89,9 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
   )
 
   return (
-    <div className="p-6 space-y-8 animate-fade-in">
+    <div className="p-4 md:p-6 space-y-6 md:space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Categories</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -99,10 +99,10 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
           </p>
         </div>
         <Button
-          className="gradient-primary border-0 text-white"
+          className="gradient-primary border-0 text-white w-full sm:w-auto"
           onClick={() => setCreateOpen(true)}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 mr-2" />
           Add Category
         </Button>
       </div>

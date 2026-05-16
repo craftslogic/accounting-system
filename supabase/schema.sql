@@ -10,9 +10,23 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ENUMS
 -- ============================================================
 
-CREATE TYPE account_type AS ENUM ('cash', 'bank', 'wallet', 'savings', 'custom');
-CREATE TYPE transaction_type AS ENUM ('income', 'expense', 'transfer');
-CREATE TYPE category_type AS ENUM ('income', 'expense');
+DO $$ BEGIN
+  CREATE TYPE account_type AS ENUM ('cash', 'bank', 'wallet', 'savings', 'custom');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE transaction_type AS ENUM ('income', 'expense', 'transfer');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE category_type AS ENUM ('income', 'expense');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 -- ============================================================
 -- TABLES
@@ -20,7 +34,7 @@ CREATE TYPE category_type AS ENUM ('income', 'expense');
 
 -- Accounts table
 -- NOTE: No balance column. Balances are calculated dynamically from transactions.
-CREATE TABLE accounts (
+CREATE TABLE IF NOT EXISTS accounts (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
@@ -31,7 +45,7 @@ CREATE TABLE accounts (
 );
 
 -- Categories table
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
@@ -47,7 +61,7 @@ CREATE TABLE categories (
 --   income:   adds `amount` to `to_account_id`
 --   expense:  subtracts `amount` from `from_account_id`
 --   transfer: subtracts from `from_account_id`, adds to `to_account_id`
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   type             transaction_type NOT NULL,
@@ -74,16 +88,16 @@ CREATE TABLE transactions (
 -- INDEXES
 -- ============================================================
 
-CREATE INDEX idx_accounts_user_id ON accounts(user_id);
-CREATE INDEX idx_accounts_is_archived ON accounts(is_archived);
-CREATE INDEX idx_categories_user_id ON categories(user_id);
-CREATE INDEX idx_categories_type ON categories(type);
-CREATE INDEX idx_transactions_user_id ON transactions(user_id);
-CREATE INDEX idx_transactions_date ON transactions(transaction_date DESC);
-CREATE INDEX idx_transactions_type ON transactions(type);
-CREATE INDEX idx_transactions_from_account ON transactions(from_account_id);
-CREATE INDEX idx_transactions_to_account ON transactions(to_account_id);
-CREATE INDEX idx_transactions_category ON transactions(category_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_is_archived ON accounts(is_archived);
+CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
+CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transaction_date DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_from_account ON transactions(from_account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -96,65 +110,101 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
 -- ---- ACCOUNTS POLICIES ----
 
+DROP POLICY IF EXISTS "accounts_select" ON accounts;
 CREATE POLICY "accounts_select"
   ON accounts FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "accounts_insert" ON accounts;
 CREATE POLICY "accounts_insert"
   ON accounts FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "accounts_update" ON accounts;
 CREATE POLICY "accounts_update"
   ON accounts FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "accounts_delete" ON accounts;
 CREATE POLICY "accounts_delete"
   ON accounts FOR DELETE
   USING (auth.uid() = user_id);
 
 -- ---- CATEGORIES POLICIES ----
 
+DROP POLICY IF EXISTS "categories_select" ON categories;
 CREATE POLICY "categories_select"
   ON categories FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "categories_insert" ON categories;
 CREATE POLICY "categories_insert"
   ON categories FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "categories_update" ON categories;
 CREATE POLICY "categories_update"
   ON categories FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "categories_delete" ON categories;
 CREATE POLICY "categories_delete"
   ON categories FOR DELETE
   USING (auth.uid() = user_id);
 
 -- ---- TRANSACTIONS POLICIES ----
 
+DROP POLICY IF EXISTS "transactions_select" ON transactions;
 CREATE POLICY "transactions_select"
   ON transactions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "transactions_insert" ON transactions;
 CREATE POLICY "transactions_insert"
   ON transactions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "transactions_update" ON transactions;
 CREATE POLICY "transactions_update"
   ON transactions FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "transactions_delete" ON transactions;
 CREATE POLICY "transactions_delete"
   ON transactions FOR DELETE
   USING (auth.uid() = user_id);
 
 -- ============================================================
--- SEED DATA (Optional — for testing)
--- Uncomment after creating your first user and replace the UUID
+-- STORAGE BUCKETS
 -- ============================================================
+
+-- Create a bucket for avatar images
+INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ---- STORAGE BUCKET POLICIES ----
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "Users can upload their own avatars" ON storage.objects;
+CREATE POLICY "Users can upload their own avatars"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'avatars' AND auth.uid() = owner);
+
+DROP POLICY IF EXISTS "Users can update their own avatars" ON storage.objects;
+CREATE POLICY "Users can update their own avatars"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'avatars' AND auth.uid() = owner);
+
+DROP POLICY IF EXISTS "Users can delete their own avatars" ON storage.objects;
+CREATE POLICY "Users can delete their own avatars"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'avatars' AND auth.uid() = owner);
 
 -- DO $$
 -- DECLARE

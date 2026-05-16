@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
+import { ProfileSettings } from './ProfileSettings'
 
 export const metadata: Metadata = { title: 'Settings' }
 
@@ -16,25 +17,11 @@ export default async function SettingsPage() {
       </div>
 
       {/* Profile Info */}
-      <div className="rounded-2xl border border-white/10 bg-card p-6 space-y-4">
-        <h2 className="text-lg font-semibold">Profile</h2>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center text-2xl font-bold text-white">
-            {(user.user_metadata?.full_name as string | undefined)?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? '?'}
-          </div>
-          <div>
-            <p className="font-semibold">{user.user_metadata?.full_name ?? 'User'}</p>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Member since {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-        </div>
-      </div>
+      <ProfileSettings user={user} />
 
       {/* App Info */}
       <div className="rounded-2xl border border-white/10 bg-card p-6 space-y-4">
-        <h2 className="text-lg font-semibold">About FinanceOS</h2>
+        <h2 className="text-lg font-semibold">About Finora</h2>
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex justify-between">
             <span>Version</span>
