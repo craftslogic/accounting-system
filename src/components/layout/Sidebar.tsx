@@ -10,6 +10,7 @@ import {
   Settings,
   TrendingUp,
   LogOut,
+  Users,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { href: '/categories', label: 'Categories', icon: Tag },
+  { href: '/people', label: 'People Balances', icon: Users },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 

@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import Link from 'next/link'
-import { TrendingUp, Mail, Lock, User, Loader2, AlertCircle } from 'lucide-react'
+import { TrendingUp, Mail, Lock, User, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { signupAction, signInWithGoogleAction } from '@/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ const initialState: ActionResult = { success: false, error: '' }
 
 export default function SignupPage() {
   const [state, formAction, pending] = useActionState(signupAction, initialState)
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -103,13 +104,24 @@ export default function SignupPage() {
                 <Input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Min. 6 characters"
                   required
                   minLength={6}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   autoComplete="new-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
 

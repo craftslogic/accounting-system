@@ -28,6 +28,18 @@ EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
 
+DO $$ BEGIN
+  CREATE TYPE contact_type AS ENUM ('friend', 'family', 'client', 'custom');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE balance_type AS ENUM ('payable', 'receivable');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
 -- ============================================================
 -- TABLES
 -- ============================================================
@@ -84,6 +96,27 @@ CREATE TABLE IF NOT EXISTS transactions (
     CHECK (type != 'transfer' OR from_account_id != to_account_id)
 );
 
+-- Contacts table (For People Balances)
+CREATE TABLE IF NOT EXISTS contacts (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  type        contact_type NOT NULL DEFAULT 'friend',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- People Balances table (Transactions for Contacts)
+CREATE TABLE IF NOT EXISTS people_balances (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  contact_id       UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  type             balance_type NOT NULL,
+  amount           NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  note             TEXT,
+  transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
@@ -98,6 +131,10 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_transactions_from_account ON transactions(from_account_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
+
+CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
+CREATE INDEX IF NOT EXISTS idx_people_balances_user_contact ON people_balances(user_id, contact_id);
+CREATE INDEX IF NOT EXISTS idx_people_balances_date ON people_balances(transaction_date DESC);
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -171,6 +208,59 @@ CREATE POLICY "transactions_update"
   ON transactions FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "transactions_delete" ON transactions;
+CREATE POLICY "transactions_delete"
+  ON transactions FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ---- CONTACTS POLICIES ----
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "contacts_select" ON contacts;
+CREATE POLICY "contacts_select"
+  ON contacts FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "contacts_insert" ON contacts;
+CREATE POLICY "contacts_insert"
+  ON contacts FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "contacts_update" ON contacts;
+CREATE POLICY "contacts_update"
+  ON contacts FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "contacts_delete" ON contacts;
+CREATE POLICY "contacts_delete"
+  ON contacts FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ---- PEOPLE BALANCES POLICIES ----
+ALTER TABLE people_balances ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "people_balances_select" ON people_balances;
+CREATE POLICY "people_balances_select"
+  ON people_balances FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "people_balances_insert" ON people_balances;
+CREATE POLICY "people_balances_insert"
+  ON people_balances FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "people_balances_update" ON people_balances;
+CREATE POLICY "people_balances_update"
+  ON people_balances FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "people_balances_delete" ON people_balances;
+CREATE POLICY "people_balances_delete"
+  ON people_balances FOR DELETE
+  USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "transactions_delete" ON transactions;
 CREATE POLICY "transactions_delete"

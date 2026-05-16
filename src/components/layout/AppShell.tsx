@@ -36,18 +36,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile header */}
-        <header className="lg:hidden flex items-center gap-4 px-4 py-3 border-b border-white/10 bg-card">
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-white/10 bg-card">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-accent transition-colors"
+            className="p-2 -ml-2 rounded-lg hover:bg-accent transition-colors"
             aria-label="Open sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Finora Logo" className="w-6 h-6 object-contain" />
-            <span className="font-semibold gradient-text">Finora</span>
+          <div className="flex items-center">
+            <img src="/logo.png" alt="Finora Logo" className="w-24 h-auto object-contain" />
           </div>
+          {/* Empty div for flex-between balance */}
+          <div className="w-9" />
         </header>
 
         {/* Page content */}

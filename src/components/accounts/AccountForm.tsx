@@ -26,6 +26,16 @@ const initialState: ActionResult<Account> = { success: false, error: '' }
 
 const ACCOUNT_TYPES = ['cash', 'bank', 'wallet', 'savings', 'custom'] as const
 
+const COMMON_BANKS = [
+  { name: 'Meezan Bank', type: 'bank', icon: '🏦' },
+  { name: 'HBL', type: 'bank', icon: '🏦' },
+  { name: 'ABL', type: 'bank', icon: '🏦' },
+  { name: 'Nayapay', type: 'wallet', icon: '📱' },
+  { name: 'SadaPay', type: 'wallet', icon: '📱' },
+  { name: 'Easypaisa', type: 'wallet', icon: '📞' },
+  { name: 'JazzCash', type: 'wallet', icon: '📞' }
+]
+
 export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
   const action = initialData
     ? updateAccountAction.bind(null, initialData.id)
@@ -35,6 +45,14 @@ export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
     action as (prevState: ActionResult<Account>, formData: FormData) => Promise<ActionResult<Account>>,
     initialState
   )
+
+  const [name, setName] = useState(initialData?.name || '')
+  const [type, setType] = useState<string>(initialData?.type ?? 'bank')
+
+  const handleBankSelect = (bank: typeof COMMON_BANKS[0]) => {
+    setName(bank.name)
+    setType(bank.type)
+  }
 
   useEffect(() => {
     if (state?.success) {
@@ -52,20 +70,40 @@ export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
         </div>
       )}
 
+      {!initialData && (
+        <div className="space-y-2">
+          <Label className="text-muted-foreground text-xs uppercase tracking-wider">Quick Select (PK)</Label>
+          <div className="flex flex-wrap gap-2">
+            {COMMON_BANKS.map((bank) => (
+              <button
+                key={bank.name}
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-muted/50 border border-white/5 rounded-full hover:bg-muted hover:border-white/10 transition-colors"
+                onClick={() => handleBankSelect(bank)}
+              >
+                <span>{bank.icon}</span>
+                {bank.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="name">Account Name</Label>
         <Input
           id="name"
           name="name"
           placeholder="e.g. Chase Bank"
-          defaultValue={initialData?.name}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           required
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="type">Account Type</Label>
-        <Select name="type" defaultValue={initialData?.type ?? 'bank'} required>
+        <Select name="type" value={type} onValueChange={setType} required>
           <SelectTrigger id="type">
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
@@ -81,7 +119,7 @@ export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="currency">Currency</Label>
-        <Select name="currency" defaultValue={initialData?.currency ?? 'USD'} required>
+        <Select name="currency" defaultValue={initialData?.currency ?? 'PKR'} required>
           <SelectTrigger id="currency">
             <SelectValue placeholder="Select currency" />
           </SelectTrigger>
@@ -94,6 +132,20 @@ export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {!initialData && (
+        <div className="space-y-2">
+          <Label htmlFor="initial_balance">Initial Balance (Optional)</Label>
+          <Input
+            id="initial_balance"
+            name="initial_balance"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+          />
+        </div>
+      )}
 
       <Button
         type="submit"

@@ -52,12 +52,48 @@ export interface TransactionWithDetails extends Transaction {
   to_account: Account | null
 }
 
+// ---- People Balances ----
+export type ContactType = 'friend' | 'family' | 'client' | 'custom'
+export type BalanceType = 'payable' | 'receivable'
+
+export interface Contact {
+  id: string
+  user_id: string
+  name: string
+  type: ContactType
+  created_at: string
+}
+
+export interface ContactWithBalance extends Contact {
+  balance: number
+  total_payable: number
+  total_receivable: number
+}
+
+export interface PeopleBalance {
+  id: string
+  user_id: string
+  contact_id: string
+  type: BalanceType
+  amount: number
+  note: string | null
+  transaction_date: string
+  created_at: string
+}
+
+export interface PeopleBalanceWithContact extends PeopleBalance {
+  contact: Contact
+}
+
 // ---- Dashboard ----
 export interface DashboardStats {
   totalBalance: number
   monthlyIncome: number
   monthlyExpenses: number
   netSavings: number
+  totalPayable: number
+  totalReceivable: number
+  actualBalance: number
 }
 
 export interface CategoryExpense {

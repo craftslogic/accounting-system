@@ -59,6 +59,24 @@ async function getAccountBalances(supabase: ReturnType<typeof createClient> exte
   return accounts.map((acc) => ({ ...acc, balance: balanceMap[acc.id] ?? 0 }))
 }
 
+async function getPeopleBalances(supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never, userId: string) {
+  const { data } = await supabase
+    .from('people_balances')
+    .select('type, amount')
+    .eq('user_id', userId)
+  
+  let totalPayable = 0
+  let totalReceivable = 0
+
+  for (const bal of data ?? []) {
+    const amount = parseFloat(String(bal.amount))
+    if (bal.type === 'payable') totalPayable += amount
+    else if (bal.type === 'receivable') totalReceivable += amount
+  }
+
+  return { totalPayable, totalReceivable }
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -119,6 +137,9 @@ export default async function DashboardPage() {
   const totalBalance = accountsWithBalance.reduce((sum, acc) => sum + acc.balance, 0)
   const netSavings = monthlyIncome - monthlyExpenses
 
+  const { totalPayable, totalReceivable } = await getPeopleBalances(supabase, user.id)
+  const actualBalance = totalBalance - totalPayable + totalReceivable
+
   // Process category expenses for chart
   const catMap: Record<string, { name: string; color: string; icon: string; amount: number }> = {}
   for (const tx of categoryExpenses.data ?? []) {
@@ -133,36 +154,36 @@ export default async function DashboardPage() {
 
   const statCards = [
     {
-      label: 'Total Balance',
-      value: formatCurrency(totalBalance),
+      label: 'Actual Balance',
+      value: formatCurrency(actualBalance),
       icon: DollarSign,
       gradient: 'from-violet-500/20 to-violet-500/5',
       border: 'border-violet-500/20',
       textColor: 'text-violet-400',
     },
     {
-      label: 'Monthly Income',
-      value: formatCurrency(monthlyIncome),
+      label: 'Money I Owe',
+      value: formatCurrency(totalPayable),
+      icon: TrendingDown,
+      gradient: 'from-orange-500/20 to-orange-500/5',
+      border: 'border-orange-500/20',
+      textColor: 'text-orange-400',
+    },
+    {
+      label: 'Money Others Owe Me',
+      value: formatCurrency(totalReceivable),
       icon: TrendingUp,
       gradient: 'from-emerald-500/20 to-emerald-500/5',
       border: 'border-emerald-500/20',
       textColor: 'text-emerald-400',
     },
     {
-      label: 'Monthly Expenses',
-      value: formatCurrency(monthlyExpenses),
-      icon: TrendingDown,
-      gradient: 'from-red-500/20 to-red-500/5',
-      border: 'border-red-500/20',
-      textColor: 'text-red-400',
-    },
-    {
-      label: 'Net Savings',
+      label: 'Net Savings (This Month)',
       value: formatCurrency(Math.abs(netSavings)),
       icon: PiggyBank,
-      gradient: netSavings >= 0 ? 'from-blue-500/20 to-blue-500/5' : 'from-orange-500/20 to-orange-500/5',
-      border: netSavings >= 0 ? 'border-blue-500/20' : 'border-orange-500/20',
-      textColor: netSavings >= 0 ? 'text-blue-400' : 'text-orange-400',
+      gradient: netSavings >= 0 ? 'from-blue-500/20 to-blue-500/5' : 'from-gray-500/20 to-gray-500/5',
+      border: netSavings >= 0 ? 'border-blue-500/20' : 'border-gray-500/20',
+      textColor: netSavings >= 0 ? 'text-blue-400' : 'text-gray-400',
     },
   ]
 

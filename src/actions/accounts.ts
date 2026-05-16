@@ -10,6 +10,7 @@ const AccountSchema = z.object({
   name: z.string().min(1, 'Account name is required').max(50),
   type: z.enum(['cash', 'bank', 'wallet', 'savings', 'custom']),
   currency: z.string().min(3).max(3),
+  initial_balance: z.coerce.number().min(0).optional(),
 })
 
 // ---- Get current user (helper) ----
@@ -29,6 +30,7 @@ export async function createAccountAction(
     name: formData.get('name'),
     type: formData.get('type'),
     currency: formData.get('currency'),
+    initial_balance: formData.get('initial_balance'),
   })
 
   if (!result.success) {
@@ -40,11 +42,33 @@ export async function createAccountAction(
 
     const { data, error } = await supabase
       .from('accounts')
-      .insert({ ...result.data, user_id: user.id })
+      .insert({ 
+        name: result.data.name,
+        type: result.data.type,
+        currency: result.data.currency,
+        user_id: user.id 
+      })
       .select()
       .single()
 
     if (error) return { success: false, error: error.message }
+
+    if (result.data.initial_balance && result.data.initial_balance > 0) {
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          type: 'income',
+          amount: result.data.initial_balance,
+          to_account_id: data.id,
+          note: 'Initial Balance',
+          transaction_date: new Date().toISOString()
+        })
+        
+        if (txError) {
+          console.error("Failed to insert initial balance:", txError)
+        }
+    }
 
     revalidatePath('/accounts')
     revalidatePath('/dashboard')

@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import Link from 'next/link'
-import { TrendingUp, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
+import { TrendingUp, Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { loginAction, signInWithGoogleAction } from '@/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ const initialState: ActionResult = { success: false, error: '' }
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(loginAction, initialState)
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -81,18 +82,34 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                  Forgot Password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   required
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   autoComplete="current-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
 
