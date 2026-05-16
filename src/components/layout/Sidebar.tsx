@@ -36,8 +36,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Finora Logo" className="w-9 h-9 object-contain" />
-          <span className="text-lg font-bold gradient-text">Finora</span>
+          <img src="/logo.png" alt="Finora Logo" className="w-24 h-auto object-contain" />
         </div>
         {/* Mobile close button */}
         {onClose && (
