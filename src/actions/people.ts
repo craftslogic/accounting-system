@@ -132,3 +132,52 @@ export async function deletePeopleBalanceAction(id: string): Promise<ActionResul
     return { success: false, error: (err as Error).message }
   }
 }
+
+export async function clearContactBalanceAction(contactId: string): Promise<ActionResult> {
+  try {
+    const { supabase, user } = await getCurrentUser()
+    
+    // Calculate current net balance
+    const { data: balances } = await supabase
+      .from('people_balances')
+      .select('type, amount')
+      .eq('contact_id', contactId)
+      .eq('user_id', user.id)
+
+    let totalPayable = 0
+    let totalReceivable = 0
+    for (const bal of balances || []) {
+      const amt = parseFloat(String(bal.amount))
+      if (bal.type === 'payable') totalPayable += amt
+      if (bal.type === 'receivable') totalReceivable += amt
+    }
+
+    const net = totalReceivable - totalPayable
+    if (net === 0) {
+      return { success: true, data: undefined }
+    }
+
+    // Insert offsetting balance
+    const type = net > 0 ? 'payable' : 'receivable'
+    const amount = Math.abs(net)
+    const { error: insertError } = await supabase
+      .from('people_balances')
+      .insert({
+        contact_id: contactId,
+        user_id: user.id,
+        type,
+        amount,
+        note: 'Settled balance manually',
+        transaction_date: new Date().toISOString().split('T')[0]
+      })
+
+    if (insertError) return { success: false, error: insertError.message }
+    
+    revalidatePath('/people')
+    revalidatePath('/dashboard')
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+

@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Users, ArrowDownRight, ArrowUpRight, Search, ArrowLeftRight } from 'lucide-react'
+import { Plus, Users, ArrowDownRight, ArrowUpRight, Search, ArrowLeftRight, CheckCircle2 } from 'lucide-react'
 import { formatCurrency } from '@/utils/currency'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/hooks/use-toast'
+import { clearContactBalanceAction } from '@/actions/people'
 import {
   Dialog,
   DialogContent,
@@ -23,10 +25,31 @@ interface PeopleClientProps {
 }
 
 export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
+  const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<'contacts' | 'transactions'>('contacts')
   const [contactDialogOpen, setContactDialogOpen] = useState(false)
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false)
+  const [isClearing, setIsClearing] = useState<string | null>(null)
+
+  const handleClearBalance = async (contactId: string, name: string) => {
+    setIsClearing(contactId)
+    const result = await clearContactBalanceAction(contactId)
+    if (result.success) {
+      toast({
+        title: 'Balance Cleared',
+        description: `Balance for ${name} has been settled.`,
+        variant: 'success',
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: result.error || 'Failed to clear balance',
+        variant: 'destructive',
+      })
+    }
+    setIsClearing(null)
+  }
 
   const filteredContacts = contacts.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -150,12 +173,13 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
                     <th className="px-4 py-3 text-right">I Owe Them</th>
                     <th className="px-4 py-3 text-right">They Owe Me</th>
                     <th className="px-4 py-3 text-right">Net Status</th>
+                    <th className="px-4 py-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredContacts.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                         No people found. Add your first contact above.
                       </td>
                     </tr>
@@ -178,6 +202,21 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
                           }`}>
                             {c.balance === 0 ? 'Settled' : formatCurrency(Math.abs(c.balance))}
                           </span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          {c.balance !== 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleClearBalance(c.id, c.name)}
+                              disabled={isClearing === c.id}
+                              className="h-8 px-2 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-400/10"
+                              title="Clear Balance"
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              <span className="text-xs">Settle</span>
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))
