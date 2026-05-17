@@ -3,7 +3,7 @@ import { formatCurrency } from '@/utils/currency'
 import { getCurrentMonthRange } from '@/utils/dates'
 import { AccountCard } from '@/components/accounts/AccountCard'
 import { TransactionRow } from '@/components/transactions/TransactionRow'
-import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
+
 import { TrendingUp, TrendingDown, DollarSign, PiggyBank, Plus } from 'lucide-react'
 import Link from 'next/link'
 import type { AccountWithBalance, TransactionWithDetails } from '@/types'
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
 
   const statCards = [
     {
-      label: 'Actual Balance',
+      label: 'Total Balance',
       value: formatCurrency(actualBalance),
       icon: DollarSign,
       gradient: 'from-violet-500/20 to-violet-500/5',
@@ -162,24 +162,24 @@ export default async function DashboardPage() {
       textColor: 'text-violet-400',
     },
     {
-      label: 'Money I Owe',
-      value: formatCurrency(totalPayable),
-      icon: TrendingDown,
-      gradient: 'from-orange-500/20 to-orange-500/5',
-      border: 'border-orange-500/20',
-      textColor: 'text-orange-400',
-    },
-    {
-      label: 'Money Others Owe Me',
-      value: formatCurrency(totalReceivable),
+      label: 'This Month Income',
+      value: formatCurrency(monthlyIncome),
       icon: TrendingUp,
       gradient: 'from-emerald-500/20 to-emerald-500/5',
       border: 'border-emerald-500/20',
       textColor: 'text-emerald-400',
     },
     {
-      label: 'Net Savings (This Month)',
-      value: formatCurrency(Math.abs(netSavings)),
+      label: 'This Month Expenses',
+      value: formatCurrency(monthlyExpenses),
+      icon: TrendingDown,
+      gradient: 'from-orange-500/20 to-orange-500/5',
+      border: 'border-orange-500/20',
+      textColor: 'text-orange-400',
+    },
+    {
+      label: 'Current Savings',
+      value: formatCurrency(netSavings),
       icon: PiggyBank,
       gradient: netSavings >= 0 ? 'from-blue-500/20 to-blue-500/5' : 'from-gray-500/20 to-gray-500/5',
       border: netSavings >= 0 ? 'border-blue-500/20' : 'border-gray-500/20',
@@ -198,13 +198,29 @@ export default async function DashboardPage() {
             Here&apos;s your financial overview.
           </p>
         </div>
-        <Link
-          href="/transactions"
-          className="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-xl gradient-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Transaction</span>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link
+            href="/transactions"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Income</span>
+          </Link>
+          <Link
+            href="/transactions"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Expense</span>
+          </Link>
+          <Link
+            href="/transactions"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Transfer</span>
+          </Link>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -228,12 +244,43 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      {/* Charts and Category Breakdown */}
-      <DashboardCharts
-        categoryBreakdown={categoryBreakdown}
-        monthlyIncome={monthlyIncome}
-        monthlyExpenses={monthlyExpenses}
-      />
+      {/* Quick Insights & Budget Usage (Lightweight) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Quick Insights */}
+        <div className="rounded-2xl border border-white/10 bg-card p-5">
+           <h3 className="text-sm font-semibold text-muted-foreground mb-4">Quick Insights</h3>
+           <div className="space-y-4">
+             <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
+                <span className="text-sm">Highest Spending Category</span>
+                <span className="text-sm font-medium">
+                  {categoryBreakdown.length > 0 ? categoryBreakdown[0].name : 'N/A'}
+                </span>
+             </div>
+             <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
+                <span className="text-sm">Top Expense Amount</span>
+                <span className="text-sm font-medium text-orange-400">
+                  {categoryBreakdown.length > 0 ? formatCurrency(categoryBreakdown[0].amount) : '$0.00'}
+                </span>
+             </div>
+           </div>
+        </div>
+
+        {/* Budget Usage placeholder */}
+        <div className="rounded-2xl border border-white/10 bg-card p-5">
+           <h3 className="text-sm font-semibold text-muted-foreground mb-4">Budget Usage</h3>
+           <div className="space-y-4">
+             <div className="bg-accent/50 p-3 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Monthly Overall (Placeholder)</span>
+                  <span className="font-medium">45% Used</span>
+                </div>
+                <div className="h-2 w-full bg-black/20 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 w-[45%]" />
+                </div>
+             </div>
+           </div>
+        </div>
+      </div>
 
       {/* Accounts and Recent Transactions */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

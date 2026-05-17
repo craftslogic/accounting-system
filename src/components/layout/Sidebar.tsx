@@ -19,10 +19,12 @@ import { Button } from '@/components/ui/button'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { href: '/accounts', label: 'Accounts', icon: CreditCard },
+  { href: '/people', label: 'People', icon: Users },
   { href: '/categories', label: 'Categories', icon: Tag },
-  { href: '/people', label: 'People Balances', icon: Users },
+  { href: '/analytics', label: 'Analytics', icon: TrendingUp },
+  { href: '/budgets', label: 'Budgets', icon: CreditCard },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 

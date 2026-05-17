@@ -332,3 +332,91 @@ CREATE POLICY "Users can delete their own avatars"
 --   VALUES
 --     (demo_user_id, 'transfer', 500.00, acc_bank_id, acc_cash_id, 'ATM withdrawal', CURRENT_DATE - 2);
 -- END $$;
+
+-- ============================================================
+-- BUDGETS & CHARITY
+-- ============================================================
+
+DO $$ BEGIN
+  CREATE TYPE budget_period AS ENUM ('weekly', 'monthly', 'yearly');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE frequency_type AS ENUM ('daily', 'weekly', 'monthly', 'yearly');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+-- Budgets table
+CREATE TABLE IF NOT EXISTS budgets (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  amount      NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  period      budget_period NOT NULL DEFAULT 'monthly',
+  category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+  account_id  UUID REFERENCES accounts(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Recurring Charity / Sadqa table
+CREATE TABLE IF NOT EXISTS recurring_charity (
+  id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id                  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  amount                   NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  frequency                frequency_type NOT NULL DEFAULT 'monthly',
+  account_id               UUID REFERENCES accounts(id) ON DELETE CASCADE,
+  note                     TEXT,
+  auto_generate_transaction BOOLEAN NOT NULL DEFAULT false,
+  auto_reminder            BOOLEAN NOT NULL DEFAULT true,
+  next_date                DATE NOT NULL,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- INDEXES & RLS (BUDGETS & CHARITY) 
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_budgets_user_id ON budgets(user_id);
+CREATE INDEX IF NOT EXISTS idx_charity_user_id ON recurring_charity(user_id);
+
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recurring_charity ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "budgets_all" ON budgets FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "charity_all" ON recurring_charity FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+
+-- ============================================================
+-- ANALYTICS RPC FUNCTIONS
+-- ============================================================
+
+-- Daily Net Worth History
+CREATE OR REPLACE FUNCTION get_daily_net_worth(p_user_id UUID, p_start_date DATE, p_end_date DATE)
+RETURNS TABLE (
+    day DATE,
+    income NUMERIC,
+    expense NUMERIC,
+    balance_change NUMERIC
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        d.date::DATE as day,
+        COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'income'), 0) as income,
+        COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'expense'), 0) as expense,
+        COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'income'), 0) - COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'expense'), 0) as balance_change
+    FROM generate_series(p_start_date, p_end_date, '1 day'::interval) d(date)
+    LEFT JOIN transactions t 
+        ON t.transaction_date = d.date::DATE 
+        AND t.user_id = p_user_id 
+        AND t.type IN ('income', 'expense')
+    GROUP BY d.date
+    ORDER BY d.date;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Note: We can calculate actual balance history in application code 
+-- by taking the base balance prior to the start date and running a 
+-- running total over the result of get_daily_net_worth.
+

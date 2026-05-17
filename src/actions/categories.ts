@@ -108,3 +108,18 @@ export async function deleteCategoryAction(id: string): Promise<ActionResult> {
     return { success: false, error: (err as Error).message }
   }
 }
+
+export async function getCategories() {
+  const { supabase, user } = await getCurrentUser()
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('name')
+  
+  if (error) {
+    console.error('Error fetching categories:', error)
+    return []
+  }
+  return data
+}

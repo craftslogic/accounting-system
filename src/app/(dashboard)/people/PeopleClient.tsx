@@ -30,21 +30,50 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
   const [activeTab, setActiveTab] = useState<'contacts' | 'transactions'>('contacts')
   const [contactDialogOpen, setContactDialogOpen] = useState(false)
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false)
+  const [settleDialogOpen, setSettleDialogOpen] = useState(false)
+  const [settlingContact, setSettlingContact] = useState<ContactWithBalance | null>(null)
+  const [settleAmount, setSettleAmount] = useState('')
   const [isClearing, setIsClearing] = useState<string | null>(null)
 
-  const handleClearBalance = async (contactId: string, name: string) => {
-    setIsClearing(contactId)
-    const result = await clearContactBalanceAction(contactId)
+  const handleSettle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!settlingContact) return
+
+    const amountNum = parseFloat(settleAmount)
+    const maxAmount = Math.abs(settlingContact.balance)
+
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({
+        title: 'Invalid Amount',
+        description: 'Please enter a valid positive number.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (amountNum > maxAmount) {
+      toast({
+        title: 'Amount Exceeds Balance',
+        description: `You cannot settle more than the outstanding balance of ${formatCurrency(maxAmount)}.`,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsClearing(settlingContact.id)
+    const result = await clearContactBalanceAction(settlingContact.id, amountNum)
     if (result.success) {
       toast({
-        title: 'Balance Cleared',
-        description: `Balance for ${name} has been settled.`,
+        title: 'Balance Settled',
+        description: `Successfully settled ${formatCurrency(amountNum)} for ${settlingContact.name}.`,
         variant: 'success',
       })
+      setSettleDialogOpen(false)
+      setSettlingContact(null)
     } else {
       toast({
         title: 'Error',
-        description: result.error || 'Failed to clear balance',
+        description: result.error || 'Failed to settle balance',
         variant: 'destructive',
       })
     }
@@ -208,7 +237,11 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleClearBalance(c.id, c.name)}
+                              onClick={() => {
+                                setSettlingContact(c)
+                                setSettleAmount(Math.abs(c.balance).toFixed(2))
+                                setSettleDialogOpen(true)
+                              }}
                               disabled={isClearing === c.id}
                               className="h-8 px-2 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-400/10"
                               title="Clear Balance"
@@ -274,6 +307,96 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
           </div>
         )}
       </div>
+
+      {/* Settle Balance Dialog */}
+      <Dialog open={settleDialogOpen} onOpenChange={setSettleDialogOpen}>
+        <DialogContent className="glass border border-white/10 text-foreground max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Settle Balance
+            </DialogTitle>
+          </DialogHeader>
+          {settlingContact && (
+            <form onSubmit={handleSettle} className="space-y-4 pt-2">
+              <div className="bg-black/20 p-4 rounded-xl border border-white/5 space-y-2">
+                <p className="text-sm text-muted-foreground">Person</p>
+                <p className="text-base font-semibold">{settlingContact.name}</p>
+                <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                  <span className="text-sm text-muted-foreground font-medium">
+                    {settlingContact.balance > 0 ? 'They owe you:' : 'You owe them:'}
+                  </span>
+                  <span className={`font-bold ${settlingContact.balance > 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+                    {formatCurrency(Math.abs(settlingContact.balance))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground" htmlFor="settle-amount">
+                  Settlement Amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                  <Input
+                    id="settle-amount"
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    max={Math.abs(settlingContact.balance)}
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(e.target.value)}
+                    className="pl-8"
+                    placeholder="Enter amount"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs py-1 h-auto"
+                    onClick={() => setSettleAmount((Math.abs(settlingContact.balance) / 2).toFixed(2))}
+                  >
+                    50%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs py-1 h-auto"
+                    onClick={() => setSettleAmount(Math.abs(settlingContact.balance).toFixed(2))}
+                  >
+                    Full Amount
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setSettleDialogOpen(false)
+                    setSettlingContact(null)
+                  }}
+                  disabled={isClearing !== null}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isClearing !== null}
+                  className="gradient-primary border-0 text-white font-medium shadow-lg hover:shadow-primary/20 transition-all"
+                >
+                  {isClearing !== null ? 'Processing...' : 'Confirm Settlement'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

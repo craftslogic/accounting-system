@@ -133,7 +133,7 @@ export async function deletePeopleBalanceAction(id: string): Promise<ActionResul
   }
 }
 
-export async function clearContactBalanceAction(contactId: string): Promise<ActionResult> {
+export async function clearContactBalanceAction(contactId: string, customAmount?: number): Promise<ActionResult> {
   try {
     const { supabase, user } = await getCurrentUser()
     
@@ -159,7 +159,13 @@ export async function clearContactBalanceAction(contactId: string): Promise<Acti
 
     // Insert offsetting balance
     const type = net > 0 ? 'payable' : 'receivable'
-    const amount = Math.abs(net)
+    const fullOutstanding = Math.abs(net)
+    const amount = customAmount !== undefined ? customAmount : fullOutstanding
+
+    if (amount <= 0) {
+      return { success: false, error: 'Settle amount must be greater than zero' }
+    }
+
     const { error: insertError } = await supabase
       .from('people_balances')
       .insert({
@@ -167,7 +173,7 @@ export async function clearContactBalanceAction(contactId: string): Promise<Acti
         user_id: user.id,
         type,
         amount,
-        note: 'Settled balance manually',
+        note: customAmount !== undefined ? `Settled balance installment of ${amount}` : 'Settled balance manually',
         transaction_date: new Date().toISOString().split('T')[0]
       })
 

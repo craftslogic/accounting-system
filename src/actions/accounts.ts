@@ -159,3 +159,19 @@ export async function deleteAccountAction(id: string): Promise<ActionResult> {
     return { success: false, error: (err as Error).message }
   }
 }
+
+export async function getAccounts() {
+  const { supabase, user } = await getCurrentUser()
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_archived', false)
+    .order('name')
+  
+  if (error) {
+    console.error('Error fetching accounts:', error)
+    return []
+  }
+  return data
+}
