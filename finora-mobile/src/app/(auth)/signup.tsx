@@ -131,7 +131,7 @@ export default function SignupScreen() {
               render={({ field: { value, onChange, onBlur } }) => (
                 <Input
                   label="Password"
-                  placeholder="Min 8 chars, 1 uppercase, 1 number"
+                  placeholder="Min 8 chars, uppercase, number, special"
                   secureTextEntry={!showPassword}
                   autoComplete="new-password"
                   value={value}
@@ -149,8 +149,8 @@ export default function SignupScreen() {
             <View style={styles.passwordHints}>
               {[
                 'At least 8 characters',
-                'One uppercase letter',
-                'One number',
+                'One uppercase & lowercase',
+                'One number & special char',
               ].map((hint) => (
                 <View key={hint} style={styles.hint}>
                   <Ionicons

@@ -10,6 +10,7 @@ import type { User } from '@supabase/supabase-js'
 
 export function ProfileSettings({ user }: { user: User }) {
   const [isEditing, setIsEditing] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const { toast } = useToast()
   
   const [state, action, isPending] = useActionState(updateProfileAction, null)
@@ -21,6 +22,7 @@ export function ProfileSettings({ user }: { user: User }) {
   useEffect(() => {
     if (state?.success) {
       setIsEditing(false)
+      setPreviewUrl(null)
       toast({
         title: 'Profile updated',
         description: 'Your profile has been successfully updated.',
@@ -76,14 +78,27 @@ export function ProfileSettings({ user }: { user: User }) {
               type="file" 
               accept="image/*" 
               className="file:text-sm file:font-medium file:text-foreground file:bg-transparent file:border-0 hover:cursor-pointer" 
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  setPreviewUrl(URL.createObjectURL(file))
+                } else {
+                  setPreviewUrl(null)
+                }
+              }}
             />
+            {previewUrl && (
+              <div className="mt-2">
+                <img src={previewUrl} alt="Preview" className="w-16 h-16 rounded-2xl object-cover" />
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Select an image to change your profile picture.</p>
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={isPending}>
               {isPending ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isPending}>
+            <Button type="button" variant="outline" onClick={() => { setIsEditing(false); setPreviewUrl(null); }} disabled={isPending}>
               Cancel
             </Button>
           </div>

@@ -128,9 +128,9 @@ export default function SignupPage() {
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Min. 6 characters"
+                  placeholder="Strong password required"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="pl-10 pr-10"
                   autoComplete="new-password"
                 />

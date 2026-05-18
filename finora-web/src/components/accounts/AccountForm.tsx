@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
-import { CURRENCIES } from '@/lib/utils'
 import type { Account, ActionResult } from '@/types'
 
 interface AccountFormProps {
@@ -117,21 +116,7 @@ export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="currency">Currency</Label>
-        <Select name="currency" defaultValue={initialData?.currency ?? 'PKR'} required>
-          <SelectTrigger id="currency">
-            <SelectValue placeholder="Select currency" />
-          </SelectTrigger>
-          <SelectContent>
-            {CURRENCIES.map((c) => (
-              <SelectItem key={c.code} value={c.code}>
-                {c.symbol} {c.name} ({c.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <input type="hidden" name="currency" value="PKR" />
 
       {!initialData && (
         <div className="space-y-2">

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { deleteAccountAction } from '@/actions/auth'
 import { useToast } from '@/hooks/use-toast'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 export function DeleteAccountButton() {
   const [isPending, startTransition] = useTransition()
@@ -30,18 +31,21 @@ export function DeleteAccountButton() {
     })
   }
 
-  if (isOpen) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm font-medium text-red-400">Are you absolutely sure?</p>
-        <div className="flex gap-2">
-          <button
-            onClick={handleDelete}
-            disabled={isPending}
-            className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm hover:bg-red-500/20 transition-colors disabled:opacity-50"
-          >
-            {isPending ? 'Deleting...' : 'Yes, Delete My Account'}
-          </button>
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <button className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors">
+          Delete Account
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-red-500">Delete Account</DialogTitle>
+          <DialogDescription>
+            Are you absolutely sure you want to delete your account? This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="mt-4">
           <button
             onClick={() => setIsOpen(false)}
             disabled={isPending}
@@ -49,17 +53,15 @@ export function DeleteAccountButton() {
           >
             Cancel
           </button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      onClick={() => setIsOpen(true)}
-      className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors"
-    >
-      Delete Account
-    </button>
+          <button
+            onClick={handleDelete}
+            disabled={isPending}
+            className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            {isPending ? 'Deleting...' : 'Yes, Delete My Account'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
