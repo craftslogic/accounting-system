@@ -165,3 +165,38 @@ export async function updateProfileAction(
   revalidatePath('/settings')
   return { success: true, data: undefined }
 }
+
+// ---- Delete Account Action ----
+export async function deleteAccountAction(): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Unauthorized' }
+
+  // Try to use RPC first (if user created one)
+  const { error: rpcError } = await supabase.rpc('delete_user')
+  
+  if (rpcError) {
+    // Fallback to service role key if available
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (supabaseUrl && serviceRoleKey) {
+      const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+      const adminAuthClient = createAdminClient(supabaseUrl, serviceRoleKey)
+      const { error: deleteError } = await adminAuthClient.auth.admin.deleteUser(user.id)
+      
+      if (deleteError) {
+        return { success: false, error: deleteError.message }
+      }
+    } else {
+      return { 
+        success: false, 
+        error: 'Cannot delete account automatically. Missing SUPABASE_SERVICE_ROLE_KEY or delete_user RPC.' 
+      }
+    }
+  }
+
+  await supabase.auth.signOut()
+  revalidatePath('/', 'layout')
+  redirect('/login')
+}

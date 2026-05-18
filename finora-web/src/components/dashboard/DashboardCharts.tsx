@@ -70,7 +70,7 @@ export function DashboardCharts({
               tick={{ fill: '#6b7280', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+              tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip
               contentStyle={{

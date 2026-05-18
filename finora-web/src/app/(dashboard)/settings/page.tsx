@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 import { ProfileSettings } from './ProfileSettings'
+import { DeleteAccountButton } from './DeleteAccountButton'
 
 export const metadata: Metadata = { title: 'Settings' }
 
@@ -10,7 +11,7 @@ export default async function SettingsPage() {
   if (!user) return null
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in max-w-full overflow-hidden">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your account preferences</p>
@@ -20,24 +21,24 @@ export default async function SettingsPage() {
       <ProfileSettings user={user} />
 
       {/* App Info */}
-      <div className="rounded-2xl border border-white/10 bg-card p-6 space-y-4">
+      <div className="rounded-2xl border border-white/10 bg-card p-6 space-y-4 overflow-hidden">
         <h2 className="text-lg font-semibold">About Finora</h2>
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <div className="flex justify-between">
-            <span>Version</span>
-            <span className="text-foreground font-medium">1.0.0</span>
+        <div className="space-y-2 text-sm text-muted-foreground w-full">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4">
+            <span className="shrink-0">Version</span>
+            <span className="text-foreground font-medium truncate">1.0.0</span>
           </div>
-          <div className="flex justify-between">
-            <span>Database</span>
-            <span className="text-foreground font-medium">Supabase PostgreSQL</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4">
+            <span className="shrink-0">Database</span>
+            <span className="text-foreground font-medium truncate">Supabase PostgreSQL</span>
           </div>
-          <div className="flex justify-between">
-            <span>Balance Calculation</span>
-            <span className="text-emerald-400 font-medium">Dynamic (no stored balances)</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4">
+            <span className="shrink-0">Balance Calculation</span>
+            <span className="text-emerald-400 font-medium truncate">Dynamic (no stored balances)</span>
           </div>
-          <div className="flex justify-between">
-            <span>Security</span>
-            <span className="text-foreground font-medium">Row Level Security enabled</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4">
+            <span className="shrink-0">Security</span>
+            <span className="text-foreground font-medium truncate">Row Level Security enabled</span>
           </div>
         </div>
       </div>
@@ -45,16 +46,10 @@ export default async function SettingsPage() {
       {/* Danger Zone */}
       <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mb-4">
           Permanently delete your account and all associated data. This action cannot be undone.
         </p>
-        <button
-          className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors"
-          disabled
-          title="Contact support to delete your account"
-        >
-          Delete Account
-        </button>
+        <DeleteAccountButton />
       </div>
     </div>
   )

@@ -6,14 +6,14 @@
  */
 export function formatCurrency(
   amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US'
+  currency: string = 'PKR',
+  locale: string = 'en-PK'
 ): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount)
 }
 
@@ -23,7 +23,7 @@ export function formatCurrency(
 export function formatTransactionAmount(
   amount: number,
   type: 'income' | 'expense' | 'transfer',
-  currency: string = 'USD'
+  currency: string = 'PKR'
 ): string {
   const formatted = formatCurrency(Math.abs(amount), currency)
   if (type === 'income') return `+${formatted}`

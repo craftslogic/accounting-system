@@ -68,7 +68,7 @@ export function AnalyticsCharts({ trends, categoryBreakdown }: AnalyticsChartsPr
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => formatCurrency(value)} />
               <Legend verticalAlign="top" height={36} iconType="circle" />
               <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
@@ -87,7 +87,7 @@ export function AnalyticsCharts({ trends, categoryBreakdown }: AnalyticsChartsPr
               <BarChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => formatCurrency(value)} cursor={{fill: 'rgba(255,255,255,0.05)'}} />
                 <Bar dataKey="savings" name="Net Savings" radius={[4, 4, 0, 0]}>
                   {trends.map((entry, index) => (

@@ -46,18 +46,18 @@ export function ProfileSettings({ user }: { user: User }) {
       </div>
 
       {!isEditing ? (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 overflow-hidden">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={fullName} className="w-16 h-16 rounded-2xl object-cover" />
+            <img src={avatarUrl} alt={fullName} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" />
           ) : (
-            <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center text-2xl font-bold text-white">
+            <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">
               {initial}
             </div>
           )}
-          <div>
-            <p className="font-semibold">{fullName}</p>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
-            <p className="text-xs text-muted-foreground mt-1">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold truncate">{fullName}</p>
+            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
               Member since {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </p>
           </div>
