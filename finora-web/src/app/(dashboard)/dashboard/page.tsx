@@ -3,6 +3,7 @@ import { formatCurrency } from '@/utils/currency'
 import { getCurrentMonthRange } from '@/utils/dates'
 import { AccountCard } from '@/components/accounts/AccountCard'
 import { TransactionRow } from '@/components/transactions/TransactionRow'
+import { FundsDashboardWidget } from '@/components/funds/FundsDashboardWidget'
 
 import { TrendingUp, TrendingDown, DollarSign, PiggyBank, Plus } from 'lucide-react'
 import Link from 'next/link'
@@ -138,7 +139,18 @@ export default async function DashboardPage() {
   const netSavings = monthlyIncome - monthlyExpenses
 
   const { totalPayable, totalReceivable } = await getPeopleBalances(supabase, user.id)
-  const actualBalance = totalBalance - totalPayable + totalReceivable
+
+  // Subtract reserved funds from available balance
+  const { data: fundsData } = await supabase
+    .from('funds')
+    .select('current_amount')
+    .eq('user_id', user.id)
+    .eq('is_archived', false)
+  const totalReservedInFunds = (fundsData ?? []).reduce(
+    (sum, f) => sum + parseFloat(String(f.current_amount)), 0
+  )
+
+  const actualBalance = totalBalance - totalPayable + totalReceivable - totalReservedInFunds
 
   // Process category expenses for chart
   const catMap: Record<string, { name: string; color: string; icon: string; amount: number }> = {}
@@ -154,12 +166,13 @@ export default async function DashboardPage() {
 
   const statCards = [
     {
-      label: 'Total Balance',
+      label: 'Available Balance',
       value: formatCurrency(actualBalance),
       icon: DollarSign,
       gradient: 'from-violet-500/20 to-violet-500/5',
       border: 'border-violet-500/20',
       textColor: 'text-violet-400',
+      subtext: totalReservedInFunds > 0 ? `${formatCurrency(totalReservedInFunds)} in funds` : undefined,
     },
     {
       label: 'This Month Income',
@@ -168,6 +181,7 @@ export default async function DashboardPage() {
       gradient: 'from-emerald-500/20 to-emerald-500/5',
       border: 'border-emerald-500/20',
       textColor: 'text-emerald-400',
+      subtext: undefined,
     },
     {
       label: 'This Month Expenses',
@@ -176,14 +190,16 @@ export default async function DashboardPage() {
       gradient: 'from-orange-500/20 to-orange-500/5',
       border: 'border-orange-500/20',
       textColor: 'text-orange-400',
+      subtext: undefined,
     },
     {
-      label: 'Current Savings',
+      label: 'Net Savings',
       value: formatCurrency(netSavings),
       icon: PiggyBank,
       gradient: netSavings >= 0 ? 'from-blue-500/20 to-blue-500/5' : 'from-gray-500/20 to-gray-500/5',
       border: netSavings >= 0 ? 'border-blue-500/20' : 'border-gray-500/20',
       textColor: netSavings >= 0 ? 'text-blue-400' : 'text-gray-400',
+      subtext: undefined,
     },
   ]
 
@@ -239,12 +255,15 @@ export default async function DashboardPage() {
                 </div>
               </div>
               <p className={`text-2xl font-bold ${card.textColor}`}>{card.value}</p>
+              {card.subtext && (
+                <p className="text-xs text-muted-foreground mt-1">{card.subtext} reserved</p>
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* Quick Insights & Budget Usage (Lightweight) */}
+      {/* Quick Insights & Funds Widget */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Quick Insights */}
         <div className="rounded-2xl border border-white/10 bg-card p-5">
@@ -259,27 +278,20 @@ export default async function DashboardPage() {
              <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
                 <span className="text-sm">Top Expense Amount</span>
                 <span className="text-sm font-medium text-orange-400">
-                  {categoryBreakdown.length > 0 ? formatCurrency(categoryBreakdown[0].amount) : '$0.00'}
+                  {categoryBreakdown.length > 0 ? formatCurrency(categoryBreakdown[0].amount) : 'PKR 0'}
+                </span>
+             </div>
+             <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
+                <span className="text-sm">Reserved in Funds</span>
+                <span className="text-sm font-medium text-violet-400">
+                  {formatCurrency(totalReservedInFunds)}
                 </span>
              </div>
            </div>
         </div>
 
-        {/* Budget Usage placeholder */}
-        <div className="rounded-2xl border border-white/10 bg-card p-5">
-           <h3 className="text-sm font-semibold text-muted-foreground mb-4">Budget Usage</h3>
-           <div className="space-y-4">
-             <div className="bg-accent/50 p-3 rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Monthly Overall (Placeholder)</span>
-                  <span className="font-medium">45% Used</span>
-                </div>
-                <div className="h-2 w-full bg-black/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 w-[45%]" />
-                </div>
-             </div>
-           </div>
-        </div>
+        {/* Funds Widget */}
+        <FundsDashboardWidget />
       </div>
 
       {/* Accounts and Recent Transactions */}

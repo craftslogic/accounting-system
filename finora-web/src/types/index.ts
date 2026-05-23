@@ -148,3 +148,95 @@ export interface TransactionFilters {
   page?: number
   per_page?: number
 }
+
+// ============================================================
+// FUNDS SYSTEM
+// ============================================================
+
+export type FundTransactionType = 'allocate' | 'withdraw' | 'adjustment'
+export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly'
+
+// ---- Fund ----
+export interface Fund {
+  id: string
+  user_id: string
+  name: string
+  type: string
+  target_amount: number | null
+  current_amount: number
+  color: string
+  icon: string
+  description: string | null
+  is_archived: boolean
+  created_at: string
+}
+
+// ---- Fund Transaction ----
+export interface FundTransaction {
+  id: string
+  user_id: string
+  fund_id: string
+  account_id: string | null
+  type: FundTransactionType
+  amount: number
+  note: string | null
+  transaction_date: string
+  created_at: string
+}
+
+export interface FundTransactionWithDetails extends FundTransaction {
+  fund: Fund | null
+  account: Account | null
+}
+
+// ---- Recurring Fund Allocation ----
+export interface FundRecurring {
+  id: string
+  user_id: string
+  fund_id: string
+  account_id: string | null
+  amount: number
+  frequency: RecurringFrequency
+  next_date: string
+  auto_generate_transaction: boolean
+  auto_reminder: boolean
+  note: string | null
+  is_active: boolean
+  created_at: string
+}
+
+// ---- Fund with stats ----
+export interface FundWithStats extends Fund {
+  progress_percentage: number
+  remaining_amount: number | null
+  total_allocated: number
+  total_withdrawn: number
+}
+
+// ---- Fund Dashboard Stats ----
+export interface FundDashboardStats {
+  totalReserved: number
+  totalFunds: number
+  activeFunds: number
+  highestFund: Fund | null
+  monthlyAllocations: number
+}
+
+// ---- Form Input Types ----
+export interface CreateFundInput {
+  name: string
+  type: string
+  target_amount?: number
+  color: string
+  icon: string
+  description?: string
+}
+
+export interface CreateFundTransactionInput {
+  fund_id: string
+  account_id?: string
+  type: FundTransactionType
+  amount: number
+  note?: string
+  transaction_date: string
+}

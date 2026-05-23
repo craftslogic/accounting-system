@@ -12,6 +12,7 @@ import {
   LogOut,
   Users,
   X,
+  PiggyBank,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAction } from '@/actions/auth'
@@ -21,8 +22,8 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
+  { href: '/funds', label: 'Funds', icon: PiggyBank },
   { href: '/people', label: 'People', icon: Users },
-  { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/analytics', label: 'Analytics', icon: TrendingUp },
   { href: '/budgets', label: 'Budgets', icon: CreditCard },
   { href: '/settings', label: 'Settings', icon: Settings },
