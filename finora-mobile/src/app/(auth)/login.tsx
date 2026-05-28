@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -74,9 +75,10 @@ export default function LoginScreen() {
 
           {/* Header */}
           <View style={styles.header}>
-            <View style={[styles.logoSmall, { backgroundColor: COLORS.primary }]}>
-              <Text style={styles.logoLetter}>F</Text>
-            </View>
+            <Image 
+              source={require('../../../assets/images/icon.png')} 
+              style={[styles.logoSmall, { resizeMode: 'contain' }]} 
+            />
             <Text style={[styles.title, { color: colors.text }]}>
               Welcome back
             </Text>
