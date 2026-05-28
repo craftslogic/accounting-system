@@ -92,7 +92,7 @@ export function TransactionRow({ transaction, isLast = false }: TransactionRowPr
           { color: isIncome ? COLORS.success : COLORS.danger },
         ]}
       >
-        {isIncome ? '+' : '-'}${transaction.amount.toFixed(2)}
+        {isIncome ? '+' : '-'}{new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(transaction.amount)}
       </Text>
     </TouchableOpacity>
   );

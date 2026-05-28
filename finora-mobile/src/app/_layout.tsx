@@ -1,3 +1,5 @@
+import 'react-native-reanimated';
+import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { View } from 'react-native';
@@ -64,6 +66,8 @@ export default function RootLayout() {
           <Stack.Screen name="edit-profile" />
           <Stack.Screen name="help-support" />
           <Stack.Screen name="privacy-security" />
+          <Stack.Screen name="people" />
+          <Stack.Screen name="contact/[id]" />
         </Stack>
       </AuthGuard>
     </ThemeProvider>

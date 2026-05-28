@@ -84,7 +84,7 @@ export default function TransactionDetailScreen() {
             />
           </View>
           <Text style={[styles.amount, { color: isIncome ? COLORS.success : colors.text }]}>
-            {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
+            {isIncome ? '+' : '-'}{new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(tx.amount)}
           </Text>
           <Text style={[styles.title, { color: colors.text }]}>
             {cat?.name ?? 'Transaction'}

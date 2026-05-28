@@ -104,6 +104,13 @@ export default function MenuScreen() {
       color: '#F59E0B',
       onPress: () => router.push('/categories'),
     },
+    {
+      icon: 'people-outline',
+      label: 'People & Payables',
+      sublabel: 'Track IOUs and shared expenses',
+      color: '#EC4899',
+      onPress: () => router.push('/people'),
+    },
   ];
 
   const supportRows: MenuRow[] = [
