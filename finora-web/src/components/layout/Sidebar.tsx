@@ -13,6 +13,7 @@ import {
   Users,
   X,
   PiggyBank,
+  Smartphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAction } from '@/actions/auth'
@@ -85,8 +86,16 @@ export function Sidebar({ onClose }: SidebarProps) {
         })}
       </nav>
 
-      {/* Logout */}
+      {/* Mobile App Download */}
       <div className="p-4 border-t border-white/10">
+        <a 
+          href="https://github.com/craftslogic/accounting-system/releases/download/finora/application-b0ca404c-60c4-4cfa-b47c-a0c3829bb06a.apk"
+          download="Finora.apk"
+          className="flex items-center gap-3 px-3 py-2.5 mb-2 w-full rounded-xl text-sm font-medium transition-all duration-200 bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+        >
+          <Smartphone className="w-5 h-5 shrink-0" />
+          Get Mobile App
+        </a>
         <form action={logoutAction}>
           <Button
             type="submit"
