@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthStore {
   user: User | null;
@@ -80,13 +85,39 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   signInWithGoogle: async () => {
     set({ isLoading: true });
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const redirectTo = makeRedirectUri({
+        native: 'finoramobile://auth/callback',
+      });
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'finoramobile://auth/callback',
+          redirectTo,
+          skipBrowserRedirect: true,
         },
       });
+
       if (error) throw error;
+      if (!data?.url) throw new Error('No OAuth URL returned');
+
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+      if (res.type === 'success' && res.url) {
+        const { params, errorCode } = QueryParams.getQueryParams(res.url);
+        if (errorCode) throw new Error(errorCode);
+        
+        const { access_token, refresh_token } = params;
+        if (access_token && refresh_token) {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+          if (sessionError) throw sessionError;
+          set({ session: sessionData.session, user: sessionData.user });
+        }
+      }
+    } catch (e: any) {
+      console.error('Google Auth Error:', e);
+      throw e;
     } finally {
       set({ isLoading: false });
     }

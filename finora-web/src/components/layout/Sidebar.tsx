@@ -24,6 +24,7 @@ const navItems = [
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/funds', label: 'Funds', icon: PiggyBank },
   { href: '/people', label: 'People', icon: Users },
+  { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/analytics', label: 'Analytics', icon: TrendingUp },
   { href: '/budgets', label: 'Budgets', icon: CreditCard },
   { href: '/settings', label: 'Settings', icon: Settings },
