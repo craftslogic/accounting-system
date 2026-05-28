@@ -34,6 +34,24 @@ interface TransactionStore {
 
   // Create
   addTransaction: (input: AddTransactionInput) => Promise<{ success: boolean; error?: string }>;
+  addAccount: (input: AddAccountInput) => Promise<{ success: boolean; error?: string }>;
+  addCategory: (input: AddCategoryInput) => Promise<{ success: boolean; error?: string }>;
+
+  // Delete
+  deleteTransaction: (id: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+export interface AddCategoryInput {
+  name: string;
+  type: 'income' | 'expense';
+  color: string;
+  icon: string;
+}
+
+export interface AddAccountInput {
+  name: string;
+  type: string;
+  currency: string;
 }
 
 export interface AddTransactionInput {
@@ -222,6 +240,71 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
       // Refresh data
       await get().fetchAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  addAccount: async (input) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not logged in' };
+
+      const { error } = await supabase.from('accounts').insert({
+        user_id: user.id,
+        name: input.name,
+        type: input.type,
+        currency: input.currency,
+      });
+
+      if (error) return { success: false, error: error.message };
+
+      // Refresh accounts list
+      await get().fetchAccounts();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  deleteTransaction: async (id) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not logged in' };
+
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) return { success: false, error: error.message };
+
+      // Refresh data
+      await get().fetchAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  addCategory: async (input) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not logged in' };
+
+      const { error } = await supabase.from('categories').insert({
+        user_id: user.id,
+        name: input.name,
+        type: input.type,
+        color: input.color,
+        icon: input.icon,
+      });
+
+      if (error) return { success: false, error: error.message };
+
+      await get().fetchCategories();
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e.message };

@@ -19,6 +19,9 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useTransactionStore } from '@/store/transactionStore';
 import type { Category } from '@/types';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Haptics from 'expo-haptics';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 type TxType = 'expense' | 'income' | 'transfer';
 
@@ -55,8 +58,8 @@ export default function AddScreen() {
   const [selectedToAccountId, setSelectedToAccountId] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  const today = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     fetchAll();
@@ -105,12 +108,12 @@ export default function AddScreen() {
       to_account_id: type === 'transfer' ? selectedToAccountId : undefined,
       category_id: selectedCategoryId || undefined,
       note: note.trim() || undefined,
-      transaction_date: today,
+      transaction_date: date.toISOString().split('T')[0],
     });
     setIsSaving(false);
 
     if (result.success) {
-      // Reset form
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setAmount('');
       setNote('');
       Alert.alert('✅ Saved!', 'Transaction added successfully.', [
@@ -118,6 +121,7 @@ export default function AddScreen() {
         { text: 'View Transactions', onPress: () => router.push('/(tabs)/transactions') },
       ]);
     } else {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', result.error ?? 'Failed to save transaction.');
     }
   };
@@ -125,11 +129,7 @@ export default function AddScreen() {
   const cfg = TYPE_CONFIG[type];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bg}
-      />
+    <ScreenWrapper>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -308,6 +308,35 @@ export default function AddScreen() {
           />
 
           {/* ── Save ───────────────────────────────────── */}
+          <SectionLabel label="Date" colors={colors} />
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            style={[
+              styles.dateButton,
+              {
+                backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted,
+                borderColor: isDark ? COLORS.dark.border : COLORS.light.border,
+              },
+            ]}
+          >
+            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.dateButtonText, { color: colors.text }]}>
+              {date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </Text>
+          </TouchableOpacity>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(false);
+                if (selectedDate) setDate(selectedDate);
+              }}
+            />
+          )}
+
           <Button
             onPress={handleSave}
             loading={isSaving || isLoading}
@@ -319,7 +348,7 @@ export default function AddScreen() {
           <View style={{ height: 80 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -357,6 +386,7 @@ function NumPad({ value, onChange, accentColor, isDark, colors }: NumPadProps) {
   const pad = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
 
   const press = (key: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (key === '⌫') {
       onChange(value.slice(0, -1));
     } else if (key === '.' && value.includes('.')) {
@@ -507,5 +537,17 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     textAlign: 'center',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 10,
+  },
+  dateButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { COLORS } from '@/constants/colors';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -48,6 +49,10 @@ function TabIcon({ name, focused, label, isDark, colors }: TabIconProps) {
 export default function TabsLayout() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const tabBarHeight = Platform.OS === 'ios' ? 84 : 60 + insets.bottom;
+  const tabBarPaddingBottom = Platform.OS === 'ios' ? 24 : 8 + insets.bottom;
 
   return (
     <Tabs
@@ -57,8 +62,8 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.tabBarBorder,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
           paddingTop: 8,
           elevation: 0,
           shadowOpacity: 0,
@@ -115,20 +120,6 @@ export default function TabsLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              name={focused ? 'bar-chart' : 'bar-chart-outline'}
-              focused={focused}
-              label="Stats"
-              isDark={isDark}
-              colors={colors}
-            />
-          ),
-        }}
-      />
 
       <Tabs.Screen
         name="accounts"
@@ -138,6 +129,21 @@ export default function TabsLayout() {
               name={focused ? 'wallet' : 'wallet-outline'}
               focused={focused}
               label="Accounts"
+              isDark={isDark}
+              colors={colors}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="menu"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? 'grid' : 'grid-outline'}
+              focused={focused}
+              label="More"
               isDark={isDark}
               colors={colors}
             />

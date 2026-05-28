@@ -63,8 +63,6 @@ export interface Transaction {
   category?: Category;
 }
 
-// ─── UI ───────────────────────────────────────────────────────────────────────
-
 export type ColorScheme = 'light' | 'dark';
 
 export interface TabItem {
@@ -72,3 +70,39 @@ export interface TabItem {
   label: string;
   icon: string;
 }
+
+// ─── Funds ────────────────────────────────────────────────────────────────────
+
+export type FundTransactionType = 'allocate' | 'withdraw' | 'adjustment';
+
+export interface Fund {
+  id: string;
+  user_id: string;
+  name: string;
+  type: string;
+  target_amount: number | null;
+  current_amount: number;
+  color: string;
+  icon: string;
+  description: string | null;
+  is_archived: boolean;
+  created_at: string;
+}
+
+export interface FundWithStats extends Fund {
+  progress_percentage: number;
+  remaining_amount: number | null;
+}
+
+export interface FundTransaction {
+  id: string;
+  user_id: string;
+  fund_id: string;
+  account_id: string | null;
+  type: FundTransactionType;
+  amount: number;
+  note: string | null;
+  transaction_date: string;
+  created_at: string;
+}
+

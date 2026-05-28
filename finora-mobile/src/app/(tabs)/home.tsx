@@ -19,6 +19,8 @@ import { Card } from '@/components/ui';
 import { TransactionRow } from '@/components/TransactionRow';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionStore } from '@/store/transactionStore';
+import { useFundStore } from '@/store/fundStore';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 const { width } = Dimensions.get('window');
 
@@ -43,15 +45,19 @@ export default function HomeScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
   const { accounts, transactions, isLoading, fetchAll } = useTransactionStore();
+  const { funds, fetchFunds, getTotalReserved } = useFundStore();
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'there';
 
   useEffect(() => {
     fetchAll();
+    fetchFunds();
   }, []);
 
   // Computed stats from real data
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalReserved = getTotalReserved();
+  const availableBalance = totalBalance - totalReserved;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -94,20 +100,16 @@ export default function HomeScreen() {
       route: '/(tabs)/add',
     },
     {
-      label: 'Transfer',
-      icon: 'swap-horizontal-outline' as const,
-      color: COLORS.primary,
-      bg: COLORS.primaryMuted,
-      route: '/(tabs)/add',
+      label: 'My Funds',
+      icon: 'wallet-outline' as const,
+      color: '#8B5CF6',
+      bg: '#8B5CF618',
+      route: '/funds',
     },
   ];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bg}
-      />
+    <ScreenWrapper>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -136,7 +138,7 @@ export default function HomeScreen() {
               styles.avatarBtn,
               { backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted },
             ]}
-            onPress={() => {}}
+            onPress={() => router.push('/(tabs)/menu')}
           >
             <Ionicons name="person" size={20} color={COLORS.primary} />
           </TouchableOpacity>
@@ -153,8 +155,14 @@ export default function HomeScreen() {
           <View style={styles.cardCircle2} />
 
           <View style={styles.balanceInner}>
-            <Text style={styles.balanceLabel}>Total Balance</Text>
-            <Text style={styles.balanceAmount}>{formatCurrency(totalBalance)}</Text>
+            <Text style={styles.balanceLabel}>Available Balance</Text>
+            <Text style={styles.balanceAmount}>{formatCurrency(availableBalance)}</Text>
+
+            {totalReserved > 0 && (
+              <Text style={styles.reservedLabel}>
+                {formatCurrency(totalReserved)} reserved in {funds.length} fund{funds.length !== 1 ? 's' : ''}
+              </Text>
+            )}
 
             <View style={styles.balanceMeta}>
               <View style={styles.balanceMetaItem}>
@@ -334,7 +342,7 @@ export default function HomeScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -406,6 +414,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -1.2,
     marginTop: 2,
+  },
+  reservedLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+    marginTop: -4,
+    marginBottom: 4,
   },
   balanceMeta: {
     flexDirection: 'row',

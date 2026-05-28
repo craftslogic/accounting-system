@@ -1,10 +1,13 @@
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useColorScheme, View } from 'react-native';
+import { View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import '../global.css';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
+import { useTheme } from '@/hooks/useTheme';
+import { registerForPushNotificationsAsync } from '@/lib/notifications';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isInitialized, initialize } = useAuthStore();
@@ -19,19 +22,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inTabsGroup = segments[0] === '(tabs)';
 
     if (!user && !inAuthGroup) {
-      // Not signed in → redirect to welcome
       router.replace('/(auth)/welcome');
     } else if (user && inAuthGroup) {
-      // Signed in → redirect to home
       router.replace('/(tabs)/home');
     }
   }, [user, isInitialized, segments]);
 
   if (!isInitialized) {
-    // Could show a splash/loader here
     return <View style={{ flex: 1 }} />;
   }
 
@@ -39,18 +38,35 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { loadMode } = useThemeStore();
+  const { isDark } = useTheme();
+
+  useEffect(() => {
+    loadMode();
+    registerForPushNotificationsAsync();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <AuthGuard>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="index" />
+          <Stack.Screen name="transaction/[id]" />
+          <Stack.Screen name="add-account" />
+          <Stack.Screen name="funds" />
+          <Stack.Screen name="fund/[id]" />
+          <Stack.Screen name="create-fund" />
+          <Stack.Screen name="categories" />
+          <Stack.Screen name="analytics" />
+          <Stack.Screen name="edit-profile" />
+          <Stack.Screen name="help-support" />
+          <Stack.Screen name="privacy-security" />
         </Stack>
       </AuthGuard>
     </ThemeProvider>
   );
 }
+

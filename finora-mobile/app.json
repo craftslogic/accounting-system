@@ -30,14 +30,30 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
+          "image": "./assets/images/logo-glow.png",
+          "imageWidth": 160,
           "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "image": "./assets/images/logo-glow.png",
+            "imageWidth": 160,
+            "backgroundColor": "#208AEF"
+          },
+          "ios": {
+            "image": "./assets/images/logo-glow.png",
+            "imageWidth": 160
           }
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#208AEF",
+          "sounds": []
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

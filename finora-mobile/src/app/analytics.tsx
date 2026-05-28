@@ -6,50 +6,67 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import { COLORS } from '@/constants/colors';
 import { Card } from '@/components/ui';
-import { MOCK_TRANSACTIONS } from '@/constants/mockData';
+import { useTransactionStore } from '@/store/transactionStore';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 const { width } = Dimensions.get('window');
 
-const totalIncome = MOCK_TRANSACTIONS.filter((t) => t.type === 'income').reduce(
-  (s, t) => s + t.amount,
-  0
-);
-const totalExpenses = MOCK_TRANSACTIONS.filter((t) => t.type === 'expense').reduce(
-  (s, t) => s + t.amount,
-  0
-);
-const savingsRate = Math.round(((totalIncome - totalExpenses) / totalIncome) * 100);
-
-// Category breakdown
-const categoryMap: Record<string, number> = {};
-MOCK_TRANSACTIONS.filter((t) => t.type === 'expense').forEach((t) => {
-  const name = t.category?.name ?? 'Other';
-  categoryMap[name] = (categoryMap[name] ?? 0) + t.amount;
-});
-
-const categoryBreakdown = Object.entries(categoryMap)
-  .map(([name, amount]) => ({ name, amount, pct: Math.round((amount / totalExpenses) * 100) }))
-  .sort((a, b) => b.amount - a.amount);
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 export default function AnalyticsScreen() {
   const { colors, isDark } = useTheme();
+  const router = useRouter();
+  const transactions = useTransactionStore((state) => state.transactions);
+
+  // Filter for this month
+  const now = new Date();
+  const currentMonthTx = transactions.filter((t) => {
+    const d = new Date(t.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+
+  const totalIncome = currentMonthTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpenses = currentMonthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
+
+  // Category breakdown
+  const categoryMap: Record<string, number> = {};
+  currentMonthTx.filter((t) => t.type === 'expense').forEach((t) => {
+    const name = t.category?.name ?? 'Other';
+    categoryMap[name] = (categoryMap[name] ?? 0) + t.amount;
+  });
+
+  const categoryBreakdown = Object.entries(categoryMap)
+    .map(([name, amount]) => ({ name, amount, pct: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bg}
-      />
+    <ScreenWrapper withBottomInset>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Analytics</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
       <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>Analytics</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          May 2026
+          {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
         </Text>
 
         {/* Summary Row */}
@@ -60,7 +77,7 @@ export default function AnalyticsScreen() {
             </View>
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Income</Text>
             <Text style={[styles.summaryValue, { color: COLORS.accent }]}>
-              ${totalIncome.toFixed(0)}
+              {formatCurrency(totalIncome)}
             </Text>
           </Card>
 
@@ -70,7 +87,7 @@ export default function AnalyticsScreen() {
             </View>
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Expenses</Text>
             <Text style={[styles.summaryValue, { color: COLORS.danger }]}>
-              ${totalExpenses.toFixed(0)}
+              {formatCurrency(totalExpenses)}
             </Text>
           </Card>
 
@@ -122,7 +139,7 @@ export default function AnalyticsScreen() {
                   {cat.pct}%
                 </Text>
                 <Text style={[styles.catAmt, { color: colors.text }]}>
-                  ${cat.amount.toFixed(0)}
+                  {formatCurrency(cat.amount)}
                 </Text>
               </View>
             </View>
@@ -131,21 +148,19 @@ export default function AnalyticsScreen() {
 
         <View style={{ height: 100 }} />
       </View>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  backBtn: { padding: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
   container: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.8,
   },
   subtitle: {
     fontSize: 13,

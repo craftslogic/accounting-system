@@ -85,9 +85,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   signInWithGoogle: async () => {
     set({ isLoading: true });
     try {
-      const redirectTo = makeRedirectUri({
-        native: 'finoramobile://auth/callback',
-      });
+      const redirectTo = makeRedirectUri();
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

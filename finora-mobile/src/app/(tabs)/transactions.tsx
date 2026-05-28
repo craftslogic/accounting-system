@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   StatusBar,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -18,6 +19,7 @@ import { TransactionRow } from '@/components/TransactionRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTransactionStore } from '@/store/transactionStore';
 import type { Transaction } from '@/types';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-PK', {
@@ -60,7 +62,13 @@ export default function TransactionsScreen() {
     fetchAll();
   }, [fetchAll]);
 
-  const groups = groupByDate(transactions);
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+
+  const filteredTransactions = transactions.filter(t => 
+    filterType === 'all' ? true : t.type === filterType
+  );
+
+  const groups = groupByDate(filteredTransactions);
 
   // Summary
   const totalIncome = transactions
@@ -71,11 +79,7 @@ export default function TransactionsScreen() {
     .reduce((s, t) => s + t.amount, 0);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bg}
-      />
+    <ScreenWrapper>
 
       {/* Header */}
       <View style={styles.header}>
@@ -117,6 +121,34 @@ export default function TransactionsScreen() {
         </View>
       )}
 
+      {/* Filters */}
+      {transactions.length > 0 && (
+        <View style={styles.filterRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            {(['all', 'income', 'expense'] as const).map(type => (
+              <TouchableOpacity
+                key={type}
+                onPress={() => setFilterType(type)}
+                style={[
+                  styles.filterChip,
+                  filterType === type && {
+                    backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted,
+                    borderColor: COLORS.primary,
+                  }
+                ]}
+              >
+                <Text style={[
+                  styles.filterChipText, 
+                  { color: filterType === type ? COLORS.primary : colors.textMuted }
+                ]}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Loading */}
       {isLoading && transactions.length === 0 && (
         <View style={styles.loadingBox}>
@@ -128,16 +160,16 @@ export default function TransactionsScreen() {
       )}
 
       {/* Empty */}
-      {!isLoading && transactions.length === 0 && (
+      {!isLoading && filteredTransactions.length === 0 && (
         <EmptyState
           icon="receipt-outline"
-          title="No transactions yet"
-          subtitle="Tap the + button to add your first income or expense"
+          title={filterType === 'all' ? "No transactions yet" : `No ${filterType}s`}
+          subtitle={filterType === 'all' ? "Tap the + button to add your first income or expense" : "Change the filter to see other records"}
         />
       )}
 
       {/* Transaction list grouped by date */}
-      {transactions.length > 0 && (
+      {filteredTransactions.length > 0 && (
         <FlatList
           data={groups}
           keyExtractor={(item) => item.title}
@@ -177,7 +209,7 @@ export default function TransactionsScreen() {
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
       )}
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -260,5 +292,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     overflow: 'hidden',
+  },
+  filterRow: {
+    marginBottom: 8,
+  },
+  filterScroll: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

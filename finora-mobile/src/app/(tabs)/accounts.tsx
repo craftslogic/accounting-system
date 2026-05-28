@@ -9,10 +9,12 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import { COLORS } from '@/constants/colors';
 import { Card } from '@/components/ui';
-import { MOCK_ACCOUNTS } from '@/constants/mockData';
+import { useTransactionStore } from '@/store/transactionStore';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -36,17 +38,15 @@ const accountTypeColors: Record<string, string> = {
   investment: '#F59E0B',
 };
 
-const totalBalance = MOCK_ACCOUNTS.reduce((s, a) => s + a.balance, 0);
-
 export default function AccountsScreen() {
   const { colors, isDark } = useTheme();
+  const router = useRouter();
+  const accounts = useTransactionStore((state) => state.accounts);
+  
+  const totalBalance = accounts.reduce((s, a) => s + (a.balance || 0), 0);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bg}
-      />
+    <ScreenWrapper>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -67,7 +67,7 @@ export default function AccountsScreen() {
             {formatCurrency(totalBalance)}
           </Text>
           <Text style={[styles.netWorthSub, { color: colors.textMuted }]}>
-            Across {MOCK_ACCOUNTS.length} accounts
+            Across {accounts.length} accounts
           </Text>
         </Card>
 
@@ -76,7 +76,7 @@ export default function AccountsScreen() {
           All Accounts
         </Text>
 
-        {MOCK_ACCOUNTS.map((account) => {
+        {accounts.map((account) => {
           const iconColor = accountTypeColors[account.type] ?? COLORS.primary;
           const icon = accountTypeIcons[account.type] ?? 'wallet-outline';
 
@@ -118,6 +118,7 @@ export default function AccountsScreen() {
 
         {/* Add Account */}
         <TouchableOpacity
+          onPress={() => router.push('/add-account')}
           style={[
             styles.addAccount,
             {
@@ -136,7 +137,7 @@ export default function AccountsScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 

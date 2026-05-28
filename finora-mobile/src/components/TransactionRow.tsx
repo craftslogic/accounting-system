@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { Transaction } from '@/types';
 import { COLORS } from '@/constants/colors';
+import { useRouter } from 'expo-router';
+import { useTransactionStore } from '@/store/transactionStore';
 
 interface TransactionRowProps {
   transaction: Transaction;
@@ -24,11 +26,41 @@ function formatDate(dateStr: string): string {
 
 export function TransactionRow({ transaction, isLast = false }: TransactionRowProps) {
   const { colors, isDark } = useTheme();
+  const router = useRouter();
+  const { deleteTransaction } = useTransactionStore();
+  
   const isIncome = transaction.type === 'income';
   const cat = transaction.category;
 
+  const handleLongPress = () => {
+    Alert.alert(
+      'Delete Transaction',
+      'Are you sure you want to delete this transaction?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            await deleteTransaction(transaction.id);
+          }
+        }
+      ]
+    );
+  };
+
+  const handlePress = () => {
+    router.push(`/transaction/${transaction.id}`);
+  };
+
   return (
-    <View style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+    <TouchableOpacity 
+      style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
+      delayLongPress={300}
+      activeOpacity={0.7}
+    >
       {/* Icon */}
       <View
         style={[
@@ -62,7 +94,7 @@ export function TransactionRow({ transaction, isLast = false }: TransactionRowPr
       >
         {isIncome ? '+' : '-'}${transaction.amount.toFixed(2)}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
