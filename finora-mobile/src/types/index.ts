@@ -24,7 +24,7 @@ export interface Session {
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
 
-export type TransactionType = 'income' | 'expense' | 'transfer';
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'opening_balance';
 
 export type AccountType = 'cash' | 'bank' | 'wallet' | 'investment';
 
@@ -73,7 +73,7 @@ export interface TabItem {
 
 // ─── Funds ────────────────────────────────────────────────────────────────────
 
-export type FundTransactionType = 'allocate' | 'withdraw' | 'adjustment';
+export type FundTransactionType = 'allocate' | 'withdraw' | 'adjustment' | 'opening_balance';
 
 export interface Fund {
   id: string;
@@ -104,5 +104,28 @@ export interface FundTransaction {
   note: string | null;
   transaction_date: string;
   created_at: string;
+}
+
+export interface Contact {
+  id: string;
+  user_id: string;
+  name: string;
+  type: 'borrower' | 'lender' | 'both';
+  created_at?: string;
+}
+
+export interface PeopleBalance {
+  id: string;
+  user_id: string;
+  contact_id: string;
+  type: 'payable' | 'receivable' | 'opening_payable' | 'opening_receivable';
+  amount: number;
+  note?: string;
+  transaction_date: string;
+  created_at?: string;
+}
+
+export interface PeopleBalanceWithContact extends PeopleBalance {
+  contact?: Contact;
 }
 

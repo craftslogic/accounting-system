@@ -81,11 +81,11 @@ export default function PeopleScreen() {
     balances.forEach(b => {
       const c = cMap.get(b.contact_id);
       if (c) {
-        if (b.type === 'payable') {
+        if (b.type === 'payable' || b.type === 'opening_payable') {
           c.total_payable += b.amount;
           c.balance -= b.amount;
           tp += b.amount;
-        } else {
+        } else if (b.type === 'receivable' || b.type === 'opening_receivable') {
           c.total_receivable += b.amount;
           c.balance += b.amount;
           tr += b.amount;

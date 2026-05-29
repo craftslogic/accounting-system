@@ -25,6 +25,7 @@ export interface CreateFundInput {
   color: string;
   icon: string;
   description?: string;
+  initial_balance?: number;
 }
 
 export interface AddFundTransactionInput {
@@ -111,18 +112,29 @@ export const useFundStore = create<FundStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not logged in' };
 
-      const { error } = await supabase.from('funds').insert({
+      const { data: newFund, error } = await supabase.from('funds').insert({
         user_id: user.id,
         name: input.name,
         type: input.type,
         target_amount: input.target_amount ?? null,
-        current_amount: 0,
+        current_amount: input.initial_balance ?? 0,
         color: input.color,
         icon: input.icon,
         description: input.description ?? null,
-      });
+      }).select('id').single();
 
       if (error) return { success: false, error: error.message };
+
+      if (input.initial_balance && input.initial_balance > 0 && newFund?.id) {
+        await supabase.from('fund_transactions').insert({
+          user_id: user.id,
+          fund_id: newFund.id,
+          type: 'opening_balance',
+          amount: input.initial_balance,
+          note: 'Opening balance',
+          transaction_date: new Date().toISOString().split('T')[0],
+        });
+      }
 
       await get().fetchFunds();
       return { success: true };

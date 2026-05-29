@@ -135,7 +135,7 @@ export default function AddAccountScreen() {
             maxLength={15}
           />
           <Text style={[styles.hint, { color: colors.textMuted }]}>
-            Enter the current balance already in this account.
+            Enter the amount already available before you started using Finora.
           </Text>
 
           {/* Currency */}

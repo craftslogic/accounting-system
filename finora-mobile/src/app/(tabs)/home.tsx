@@ -76,8 +76,8 @@ export default function HomeScreen() {
   let totalPayable = 0;
   let totalReceivable = 0;
   balances.forEach(b => {
-    if (b.type === 'payable') totalPayable += b.amount;
-    else if (b.type === 'receivable') totalReceivable += b.amount;
+    if (b.type === 'payable' || b.type === 'opening_payable') totalPayable += b.amount;
+    else if (b.type === 'receivable' || b.type === 'opening_receivable') totalReceivable += b.amount;
   });
 
   // Available Balance = All Accounts - Reserved Funds - Money Held For Others (Payable) + Receivable
@@ -144,9 +144,9 @@ export default function HomeScreen() {
         {/* 2. 4 Quick Cards */}
         <View style={styles.statsGrid}>
           {[
-            { label: 'Income', value: monthlyIncome, color: COLORS.accent, icon: 'arrow-down-circle' as const },
-            { label: 'Expenses', value: monthlyExpenses, color: COLORS.danger, icon: 'arrow-up-circle' as const },
-            { label: 'Savings', value: savings, color: '#2563EB', icon: 'trending-up' as const },
+            { label: 'Monthly Income', value: monthlyIncome, color: COLORS.accent, icon: 'arrow-down-circle' as const },
+            { label: 'Monthly Expenses', value: monthlyExpenses, color: COLORS.danger, icon: 'arrow-up-circle' as const },
+            { label: 'Monthly Savings', value: savings, color: '#2563EB', icon: 'trending-up' as const },
             { label: 'Receivables', value: totalReceivable, color: '#8B5CF6', icon: 'people' as const },
           ].map((s, i) => (
             <Card key={i} style={styles.statCard} elevated padding={12}>
@@ -254,7 +254,7 @@ export default function HomeScreen() {
             balances.slice(0, 3).map((b, i) => (
               <View key={b.id} style={[styles.snapshotRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
                 <View style={[styles.snapshotIcon, { backgroundColor: `${COLORS.primary}15` }]}>
-                  <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{b.contact?.name.charAt(0)}</Text>
+                  <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{b.contact?.name?.charAt(0)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>{b.contact?.name}</Text>

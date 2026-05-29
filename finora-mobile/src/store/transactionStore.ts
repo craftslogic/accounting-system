@@ -150,7 +150,7 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
       for (const tx of txs ?? []) {
         const amt = parseFloat(String(tx.amount));
-        if (tx.type === 'income' && tx.to_account_id && tx.to_account_id in balanceMap) {
+        if ((tx.type === 'income' || tx.type === 'opening_balance') && tx.to_account_id && tx.to_account_id in balanceMap) {
           balanceMap[tx.to_account_id] += amt;
         } else if (tx.type === 'expense' && tx.from_account_id && tx.from_account_id in balanceMap) {
           balanceMap[tx.from_account_id] -= amt;
@@ -280,11 +280,10 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
       if (error) return { success: false, error: error.message };
 
-      // If initial balance provided, insert an opening income transaction
       if (input.initialBalance && input.initialBalance > 0 && newAccount?.id) {
         await supabase.from('transactions').insert({
           user_id: user.id,
-          type: 'income',
+          type: 'opening_balance',
           amount: input.initialBalance,
           to_account_id: newAccount.id,
           note: 'Opening balance',

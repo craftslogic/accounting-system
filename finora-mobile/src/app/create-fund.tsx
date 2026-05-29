@@ -47,6 +47,7 @@ export default function CreateFundScreen() {
   const [name, setName] = useState('');
   const [type, setType] = useState('savings');
   const [targetAmount, setTargetAmount] = useState('');
+  const [initialBalance, setInitialBalance] = useState('');
   const [description, setDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLORS_LIST[0]);
   const [selectedIcon, setSelectedIcon] = useState<keyof typeof Ionicons.glyphMap>('wallet-outline');
@@ -63,6 +64,7 @@ export default function CreateFundScreen() {
       name: name.trim(),
       type,
       target_amount: targetAmount ? parseFloat(targetAmount) : undefined,
+      initial_balance: initialBalance ? parseFloat(initialBalance) : undefined,
       color: selectedColor,
       icon: selectedIcon,
       description: description.trim() || undefined,
@@ -142,6 +144,19 @@ export default function CreateFundScreen() {
             value={targetAmount}
             onChangeText={setTargetAmount}
           />
+
+          <Label text="OPENING BALANCE (optional)" colors={colors} />
+          <TextInput
+            style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted }]}
+            placeholder="e.g. 50000"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="numeric"
+            value={initialBalance}
+            onChangeText={setInitialBalance}
+          />
+          <Text style={[styles.hint, { color: colors.textMuted, marginTop: -12, marginBottom: 16, fontSize: 12, marginLeft: 2 }]}>
+            Enter the amount already available before using Finora.
+          </Text>
 
           <Label text="COLOR" colors={colors} />
           <View style={styles.colorRow}>
