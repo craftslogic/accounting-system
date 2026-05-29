@@ -129,6 +129,9 @@ export function AccountForm({ initialData, onSuccess }: AccountFormProps) {
             min="0"
             placeholder="0.00"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter the amount already available before you started using Finora.
+          </p>
         </div>
       )}
 

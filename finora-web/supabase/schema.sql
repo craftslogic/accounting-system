@@ -17,7 +17,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE transaction_type AS ENUM ('income', 'expense', 'transfer');
+  CREATE TYPE transaction_type AS ENUM ('income', 'expense', 'transfer', 'opening_balance');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
@@ -35,7 +35,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE balance_type AS ENUM ('payable', 'receivable');
+  CREATE TYPE balance_type AS ENUM ('payable', 'receivable', 'opening_payable', 'opening_receivable');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
   -- Validation constraints
   CONSTRAINT income_needs_to_account
-    CHECK (type != 'income' OR to_account_id IS NOT NULL),
+    CHECK (type NOT IN ('income', 'opening_balance') OR to_account_id IS NOT NULL),
   CONSTRAINT expense_needs_from_account
     CHECK (type != 'expense' OR from_account_id IS NOT NULL),
   CONSTRAINT transfer_needs_both_accounts

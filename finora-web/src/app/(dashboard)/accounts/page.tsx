@@ -25,7 +25,7 @@ async function getAccountsWithBalances(supabase: Awaited<ReturnType<typeof creat
 
   for (const tx of transactions ?? []) {
     const amount = parseFloat(String(tx.amount))
-    if (tx.type === 'income' && tx.to_account_id && tx.to_account_id in balanceMap) {
+    if ((tx.type === 'income' || tx.type === 'opening_balance') && tx.to_account_id && tx.to_account_id in balanceMap) {
       balanceMap[tx.to_account_id] += amount
     } else if (tx.type === 'expense' && tx.from_account_id && tx.from_account_id in balanceMap) {
       balanceMap[tx.from_account_id] -= amount

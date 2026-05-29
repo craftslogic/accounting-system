@@ -127,6 +127,26 @@ export function FundForm({ fund, onSuccess, onCancel }: FundFormProps) {
         />
       </div>
 
+      {/* Opening Balance (Only on Create) */}
+      {!isEdit && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-muted-foreground">
+            Opening Balance <span className="text-xs text-muted-foreground/60">(optional)</span>
+          </label>
+          <input
+            name="initial_balance"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="e.g. 50,000"
+            className="w-full px-4 py-2.5 rounded-xl bg-accent/50 border border-white/10 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter the amount already available before you started using Finora.
+          </p>
+        </div>
+      )}
+
       {/* Icon Picker */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-muted-foreground">Icon</label>

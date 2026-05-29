@@ -37,9 +37,9 @@ export default async function PeoplePage() {
     const cid = b.contact_id
     if (contactMap[cid]) {
       const amount = parseFloat(String(b.amount))
-      if (b.type === 'payable') {
+      if (b.type === 'payable' || b.type === 'opening_payable') {
         contactMap[cid].total_payable += amount
-      } else {
+      } else if (b.type === 'receivable' || b.type === 'opening_receivable') {
         contactMap[cid].total_receivable += amount
       }
     }

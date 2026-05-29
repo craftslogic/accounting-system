@@ -8,7 +8,7 @@
 -- ============================================================
 
 DO $$ BEGIN
-  CREATE TYPE fund_transaction_type AS ENUM ('allocate', 'withdraw', 'adjustment');
+  CREATE TYPE fund_transaction_type AS ENUM ('allocate', 'withdraw', 'adjustment', 'opening_balance');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;

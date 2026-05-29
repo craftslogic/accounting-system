@@ -13,6 +13,7 @@ const FundSchema = z.object({
   color: z.string().min(1),
   icon: z.string().min(1),
   description: z.string().max(500).optional().nullable(),
+  initial_balance: z.coerce.number().min(0).optional(),
 })
 
 const FundTransactionSchema = z.object({
@@ -58,6 +59,7 @@ export async function createFundAction(
     color: formData.get('color'),
     icon: formData.get('icon'),
     description: formData.get('description') || null,
+    initial_balance: formData.get('initial_balance'),
   }
 
   const result = FundSchema.safeParse(raw)
@@ -72,6 +74,24 @@ export async function createFundAction(
       .single()
 
     if (error) return { success: false, error: error.message }
+
+    if (result.data.initial_balance && result.data.initial_balance > 0) {
+      await supabase.from('fund_transactions').insert({
+        user_id: user.id,
+        fund_id: data.id,
+        type: 'opening_balance',
+        amount: result.data.initial_balance,
+        note: 'Opening Balance',
+        transaction_date: new Date().toISOString().split('T')[0]
+      })
+      
+      await supabase
+        .from('funds')
+        .update({ current_amount: result.data.initial_balance })
+        .eq('id', data.id)
+        .eq('user_id', user.id)
+    }
+
     revalidatePath('/funds')
     revalidatePath('/dashboard')
     return { success: true, data }

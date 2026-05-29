@@ -26,7 +26,8 @@ interface BalanceFormProps {
 const initialState: ActionResult<PeopleBalance> = { success: false, error: '' }
 
 export function BalanceForm({ contacts, onSuccess }: BalanceFormProps) {
-  const [type, setType] = useState<BalanceType>('payable')
+  const [type, setType] = useState<BalanceType | 'opening_payable' | 'opening_receivable'>('payable')
+  const [isOpening, setIsOpening] = useState(false)
 
   const [state, formAction, pending] = useActionState(
     createPeopleBalanceAction as (prevState: ActionResult<PeopleBalance>, formData: FormData) => Promise<ActionResult<PeopleBalance>>,
@@ -77,7 +78,27 @@ export function BalanceForm({ contacts, onSuccess }: BalanceFormProps) {
             </button>
           ))}
         </div>
-        <input type="hidden" name="type" value={type} />
+        <input type="hidden" name="type" value={isOpening ? `opening_${type}` : type} />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="isOpening"
+            checked={isOpening}
+            onChange={(e) => setIsOpening(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <Label htmlFor="isOpening" className="text-sm font-medium cursor-pointer">
+            This is an opening balance
+          </Label>
+        </div>
+        {isOpening && (
+          <p className="text-xs text-muted-foreground pl-6">
+            Enter the amount already outstanding before you started using Finora.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

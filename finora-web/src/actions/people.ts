@@ -12,7 +12,7 @@ const ContactSchema = z.object({
 
 const BalanceSchema = z.object({
   contact_id: z.string().uuid(),
-  type: z.enum(['payable', 'receivable']),
+  type: z.enum(['payable', 'receivable', 'opening_payable', 'opening_receivable']),
   amount: z.coerce.number().positive('Amount must be positive'),
   note: z.string().max(500).optional().nullable(),
   transaction_date: z.string().min(1, 'Date is required'),
@@ -148,8 +148,8 @@ export async function clearContactBalanceAction(contactId: string, customAmount?
     let totalReceivable = 0
     for (const bal of balances || []) {
       const amt = parseFloat(String(bal.amount))
-      if (bal.type === 'payable') totalPayable += amt
-      if (bal.type === 'receivable') totalReceivable += amt
+      if (bal.type === 'payable' || bal.type === 'opening_payable') totalPayable += amt
+      if (bal.type === 'receivable' || bal.type === 'opening_receivable') totalReceivable += amt
     }
 
     const net = totalReceivable - totalPayable

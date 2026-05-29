@@ -35,8 +35,8 @@ export async function POST(
     let totalReceivable = 0
     for (const bal of balances || []) {
       const amt = parseFloat(String(bal.amount))
-      if (bal.type === 'payable') totalPayable += amt
-      if (bal.type === 'receivable') totalReceivable += amt
+      if (bal.type === 'payable' || bal.type === 'opening_payable') totalPayable += amt
+      if (bal.type === 'receivable' || bal.type === 'opening_receivable') totalReceivable += amt
     }
 
     const net = totalReceivable - totalPayable

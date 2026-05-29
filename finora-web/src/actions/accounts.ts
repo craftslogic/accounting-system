@@ -58,10 +58,10 @@ export async function createAccountAction(
         .from('transactions')
         .insert({
           user_id: user.id,
-          type: 'income',
+          type: 'opening_balance',
           amount: result.data.initial_balance,
           to_account_id: data.id,
-          note: 'Initial Balance',
+          note: 'Opening Balance',
           transaction_date: new Date().toISOString()
         })
         

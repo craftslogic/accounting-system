@@ -35,7 +35,7 @@ async function getAccountBalances(supabase: ReturnType<typeof createClient> exte
 
   for (const tx of transactions ?? []) {
     const amount = parseFloat(String(tx.amount))
-    if (tx.type === 'income' && tx.to_account_id && tx.to_account_id in balanceMap) {
+    if ((tx.type === 'income' || tx.type === 'opening_balance') && tx.to_account_id && tx.to_account_id in balanceMap) {
       balanceMap[tx.to_account_id] += amount
     } else if (tx.type === 'expense' && tx.from_account_id && tx.from_account_id in balanceMap) {
       balanceMap[tx.from_account_id] -= amount
@@ -63,8 +63,8 @@ async function getPeopleData(supabase: ReturnType<typeof createClient> extends P
 
   for (const bal of data ?? []) {
     const amount = parseFloat(String(bal.amount))
-    if (bal.type === 'payable') totalPayable += amount
-    else if (bal.type === 'receivable') totalReceivable += amount
+    if (bal.type === 'payable' || bal.type === 'opening_payable') totalPayable += amount
+    else if (bal.type === 'receivable' || bal.type === 'opening_receivable') totalReceivable += amount
   }
 
   return { 
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
 
   const statCards = [
     {
-      label: 'Income',
+      label: 'Monthly Income',
       value: formatCurrency(monthlyIncome),
       icon: TrendingUp,
       gradient: 'from-emerald-500/20 to-emerald-500/5',
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
       textColor: 'text-emerald-400',
     },
     {
-      label: 'Expenses',
+      label: 'Monthly Expenses',
       value: formatCurrency(monthlyExpenses),
       icon: TrendingDown,
       gradient: 'from-orange-500/20 to-orange-500/5',
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
       textColor: 'text-orange-400',
     },
     {
-      label: 'Savings',
+      label: 'Monthly Savings',
       value: formatCurrency(netSavings),
       icon: PiggyBank,
       gradient: netSavings >= 0 ? 'from-blue-500/20 to-blue-500/5' : 'from-gray-500/20 to-gray-500/5',
