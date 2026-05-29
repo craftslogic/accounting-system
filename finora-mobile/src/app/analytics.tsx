@@ -27,10 +27,12 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function shortAmount(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}k`;
-  return String(v);
+function shortAmount(v: number | string): string {
+  const num = typeof v === 'string' ? Number(v) : v;
+  if (isNaN(num)) return String(v);
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(0)}k`;
+  return String(num);
 }
 
 const CHART_COLORS = [
@@ -221,7 +223,7 @@ export default function AnalyticsScreen() {
                 xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}
                 noOfSections={4}
                 maxValue={Math.max(totalIncome, totalExpenses, 1) * 1.2}
-                yAxisLabelFormatter={shortAmount}
+                formatYLabel={shortAmount}
                 isAnimated
                 animationDuration={600}
                 showValuesAsTopLabel={false}

@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.muzzamilbukhari.finoramobile"
+      "package": "com.muzzamilbukhari.finoramobile",
+      "versionCode": 2
     },
     "web": {
       "output": "static",
