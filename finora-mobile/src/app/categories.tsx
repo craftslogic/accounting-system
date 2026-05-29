@@ -123,7 +123,7 @@ export default function CategoriesScreen() {
 
       {/* Add Category Modal */}
       <Modal visible={showModal} transparent animationType="slide">
-        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={styles.overlay} behavior="padding">
           <View style={[styles.sheet, { backgroundColor: isDark ? COLORS.dark.bgCard : '#FFF' }]}>
             <View style={styles.sheetHandle} />
             <Text style={[styles.sheetTitle, { color: colors.text }]}>New Category</Text>

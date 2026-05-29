@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -141,8 +142,12 @@ export default function MenuScreen() {
 
         {/* Profile Card */}
         <View style={[styles.avatarCard, { backgroundColor: isDark ? COLORS.dark.bgCard : '#FFFFFF', borderColor: colors.border }]}>
-          <View style={[styles.avatar, { backgroundColor: `${COLORS.primary}20` }]}>
-            <Text style={[styles.avatarLetter, { color: COLORS.primary }]}>{avatarLetter}</Text>
+          <View style={[styles.avatar, { backgroundColor: `${COLORS.primary}20`, overflow: 'hidden' }]}>
+            {user?.user_metadata?.avatar_url ? (
+              <Image source={{ uri: user.user_metadata.avatar_url }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <Text style={[styles.avatarLetter, { color: COLORS.primary }]}>{avatarLetter}</Text>
+            )}
           </View>
           <View style={styles.avatarInfo}>
             <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>

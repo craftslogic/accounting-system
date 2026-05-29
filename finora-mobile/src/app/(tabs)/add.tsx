@@ -133,7 +133,7 @@ export default function AddScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView
           showsVerticalScrollIndicator={false}

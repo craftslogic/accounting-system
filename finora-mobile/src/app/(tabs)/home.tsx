@@ -21,6 +21,7 @@ import { useFundStore } from '@/store/fundStore';
 import { usePeopleStore } from '@/store/peopleStore';
 import { useBudgetStore } from '@/store/budgetStore';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { Image } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -80,8 +81,8 @@ export default function HomeScreen() {
     else if (b.type === 'receivable' || b.type === 'opening_receivable') totalReceivable += b.amount;
   });
 
-  // Available Balance = All Accounts - Reserved Funds - Money Held For Others (Payable) + Receivable
-  const availableBalance = totalBalance - totalReserved - totalPayable + totalReceivable;
+  // Available Balance = All Accounts - Reserved Funds - Money Held For Others (Payable)
+  const availableBalance = totalBalance - totalReserved - totalPayable;
 
   // Monthly Txs
   const now = new Date();
@@ -115,12 +116,12 @@ export default function HomeScreen() {
             <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()},</Text>
             <Text style={[styles.userName, { color: colors.text }]}>{firstName} 👋</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.avatarBtn, { backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted }]}
-            onPress={() => router.push('/(tabs)/menu')}
-          >
-            <Ionicons name="person" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
+          <View style={{ width: 80, height: 28 }}>
+            <Image 
+              source={require('../../../assets/images/logo.png')} 
+              style={{ width: '100%', height: '100%', resizeMode: 'contain', opacity: isDark ? 0.9 : 1 }} 
+            />
+          </View>
         </View>
 
         {/* 1. Big Card: Available Balance */}

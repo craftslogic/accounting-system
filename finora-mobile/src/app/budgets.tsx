@@ -93,7 +93,7 @@ export default function BudgetsScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={[styles.card, { backgroundColor: isDark ? COLORS.dark.bgCard : '#FFF', borderColor: colors.border }]}>

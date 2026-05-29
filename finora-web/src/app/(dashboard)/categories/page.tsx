@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { CategoriesClient } from './CategoriesClient'
+import { DEFAULT_CATEGORIES } from '@/lib/constants'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Categories' }
@@ -16,5 +17,7 @@ export default async function CategoriesPage() {
     .order('type')
     .order('name')
 
-  return <CategoriesClient categories={categories ?? []} />
+  const cats = categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES
+
+  return <CategoriesClient categories={cats} />
 }

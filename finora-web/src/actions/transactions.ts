@@ -8,7 +8,7 @@ import type { ActionResult, Transaction } from '@/types'
 const TransactionSchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']),
   amount: z.coerce.number().positive('Amount must be positive'),
-  category_id: z.string().uuid().optional().nullable(),
+  category_id: z.string().optional().nullable(),
   from_account_id: z.string().uuid().optional().nullable(),
   to_account_id: z.string().uuid().optional().nullable(),
   note: z.string().max(500).optional().nullable(),
@@ -53,6 +53,10 @@ export async function createTransactionAction(
     return { success: false, error: result.error.message }
   }
 
+  // If category_id is a local default (not a UUID), ignore it.
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.data.category_id || '')
+  const finalCategoryId = isUuid ? result.data.category_id : null
+
   try {
     const { supabase, user } = await getCurrentUser()
 
@@ -86,7 +90,7 @@ export async function createTransactionAction(
 
     const { data, error } = await supabase
       .from('transactions')
-      .insert({ ...result.data, user_id: user.id })
+      .insert({ ...result.data, category_id: finalCategoryId, user_id: user.id })
       .select()
       .single()
 
@@ -121,12 +125,16 @@ export async function updateTransactionAction(
     return { success: false, error: result.error.message }
   }
 
+  // If category_id is a local default (not a UUID), ignore it.
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.data.category_id || '')
+  const finalCategoryId = isUuid ? result.data.category_id : null
+
   try {
     const { supabase, user } = await getCurrentUser()
 
     const { data, error } = await supabase
       .from('transactions')
-      .update(result.data)
+      .update({ ...result.data, category_id: finalCategoryId })
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

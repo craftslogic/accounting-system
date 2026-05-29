@@ -57,7 +57,7 @@ export default function LoginScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         style={styles.kav}
       >
         <ScrollView
@@ -76,10 +76,10 @@ export default function LoginScreen() {
           {/* Header */}
           <View style={styles.header}>
             <Image 
-              source={require('../../../assets/images/icon.png')} 
+              source={require('../../../assets/images/logo.png')} 
               style={[styles.logoSmall, { resizeMode: 'contain' }]} 
             />
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text style={[styles.title, { color: colors.text, marginTop: 8 }]}>
               Welcome back
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -182,17 +182,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoSmall: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 140,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
   },
   logoLetter: {
     fontSize: 24,

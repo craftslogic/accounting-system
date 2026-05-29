@@ -7,6 +7,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,11 +44,10 @@ export default function WelcomeScreen() {
       <View style={styles.container}>
         {/* Logo & Brand */}
         <View style={styles.hero}>
-          <View style={[styles.logoCircle, { backgroundColor: COLORS.primary }]}>
-            <Text style={styles.logoLetter}>F</Text>
-          </View>
-
-          <Text style={[styles.appName, { color: colors.text }]}>Finora</Text>
+          <Image 
+            source={require('../../../assets/images/logo.png')} 
+            style={{ width: 180, height: 60, resizeMode: 'contain', marginBottom: 16 }} 
+          />
 
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
             Smart money management{'\n'}for modern lives
@@ -107,9 +107,7 @@ export default function WelcomeScreen() {
             disabled={isLoading}
           >
             {/* Google Logo */}
-            <View style={styles.googleLogo}>
-              <Text style={styles.googleG}>G</Text>
-            </View>
+            <Ionicons name="logo-google" size={20} color={colors.text} />
             <Text style={[styles.googleText, { color: colors.text }]}>
               Continue with Google
             </Text>
@@ -193,30 +191,6 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.06,
     gap: 16,
   },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  logoLetter: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  appName: {
-    fontSize: 42,
-    fontWeight: '800',
-    letterSpacing: -1.5,
-  },
   tagline: {
     fontSize: 17,
     textAlign: 'center',
@@ -255,19 +229,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingVertical: 16,
     paddingHorizontal: 20,
-  },
-  googleLogo: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#4285F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleG: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
   },
   googleText: {
     fontSize: 15,

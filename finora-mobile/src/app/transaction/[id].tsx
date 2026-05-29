@@ -187,7 +187,7 @@ export default function TransactionDetailScreen() {
       <Modal visible={showEdit} transparent animationType="slide">
         <KeyboardAvoidingView
           style={styles.overlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
         >
           <View
             style={[

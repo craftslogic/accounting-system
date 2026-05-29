@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { TransactionsClient } from './TransactionsClient'
+import { DEFAULT_CATEGORIES } from '@/lib/constants'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Transactions' }
@@ -38,7 +39,7 @@ export default async function TransactionsPage() {
     <TransactionsClient
       transactions={(transactionsRes.data ?? []) as never}
       accounts={accountsRes.data ?? []}
-      categories={categoriesRes.data ?? []}
+      categories={categoriesRes.data && categoriesRes.data.length > 0 ? categoriesRes.data : DEFAULT_CATEGORIES}
     />
   )
 }

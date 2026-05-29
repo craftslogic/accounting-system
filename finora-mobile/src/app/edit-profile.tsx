@@ -10,6 +10,8 @@ import { COLORS } from '@/constants/colors';
 import { useAuthStore } from '@/store/authStore';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { supabase } from '@/lib/supabase';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 
 export default function EditProfileScreen() {
   const { colors, isDark } = useTheme();
@@ -17,9 +19,52 @@ export default function EditProfileScreen() {
   const { user } = useAuthStore();
 
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name ?? '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.user_metadata?.avatar_url ?? null);
   const [isSaving, setIsSaving] = useState(false);
 
   const avatarLetter = (fullName[0] ?? user?.email?.[0] ?? '?').toUpperCase();
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setIsSaving(true);
+        const base64Str = result.assets[0].base64;
+        const fileExt = result.assets[0].uri.split('.').pop() || 'jpg';
+        const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+
+        // Upload to Supabase storage
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, decode(base64Str), {
+            contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+          });
+
+        if (uploadError) {
+          Alert.alert('Upload Error', uploadError.message);
+          setIsSaving(false);
+          return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+
+        setAvatarUrl(publicUrl);
+        setIsSaving(false);
+      }
+    } catch (err: any) {
+      setIsSaving(false);
+      Alert.alert('Error', err.message);
+    }
+  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
@@ -28,7 +73,10 @@ export default function EditProfileScreen() {
     }
     setIsSaving(true);
     const { error } = await supabase.auth.updateUser({
-      data: { full_name: fullName.trim() },
+      data: { 
+        full_name: fullName.trim(),
+        avatar_url: avatarUrl,
+      },
     });
     setIsSaving(false);
 
@@ -51,16 +99,25 @@ export default function EditProfileScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
           {/* Avatar */}
           <View style={styles.avatarSection}>
-            <View style={[styles.avatar, { backgroundColor: `${COLORS.primary}20` }]}>
-              <Text style={[styles.avatarLetter, { color: COLORS.primary }]}>{avatarLetter}</Text>
-            </View>
+            <TouchableOpacity onPress={handlePickImage} disabled={isSaving}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: `${COLORS.primary}20` }]}>
+                  <Text style={[styles.avatarLetter, { color: COLORS.primary }]}>{avatarLetter}</Text>
+                </View>
+              )}
+              <View style={[styles.editIconBadge, { backgroundColor: COLORS.primary, borderColor: isDark ? COLORS.dark.bgCard : '#FFF' }]}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
+            </TouchableOpacity>
             <Text style={[styles.avatarHint, { color: colors.textMuted }]}>
-              Profile picture is set via your Google account
+              Tap to change profile picture
             </Text>
           </View>
 
@@ -115,6 +172,7 @@ const styles = StyleSheet.create({
   avatarSection: { alignItems: 'center', paddingVertical: 28, gap: 12 },
   avatar: { width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   avatarLetter: { fontSize: 32, fontWeight: '800' },
+  editIconBadge: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 3 },
   avatarHint: { fontSize: 12, textAlign: 'center' },
   label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
   input: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, marginBottom: 16 },

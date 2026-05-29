@@ -223,7 +223,7 @@ export default function FundDetailScreen() {
       <Modal visible={!!modalType} transparent animationType="slide">
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
         >
           <View style={[styles.sheet, { backgroundColor: isDark ? COLORS.dark.bgCard : '#FFFFFF' }]}>
             <View style={styles.sheetHandle} />

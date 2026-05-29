@@ -138,7 +138,7 @@ export default async function DashboardPage() {
   const totalReservedInFunds = (fundsData.data ?? []).reduce((sum, f) => sum + parseFloat(String(f.current_amount)), 0)
   const { totalPayable, totalReceivable } = peopleData
   
-  const actualBalance = totalBalance - totalReservedInFunds - totalPayable + totalReceivable
+  const actualBalance = totalBalance - totalReservedInFunds - totalPayable
 
   const statCards = [
     {
