@@ -3,7 +3,7 @@
 // ============================================================
 
 export type AccountType = 'cash' | 'bank' | 'wallet' | 'savings' | 'custom'
-export type TransactionType = 'income' | 'expense' | 'transfer'
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'opening_balance'
 export type CategoryType = 'income' | 'expense'
 
 // ---- Account ----
@@ -54,7 +54,7 @@ export interface TransactionWithDetails extends Transaction {
 
 // ---- People Balances ----
 export type ContactType = 'friend' | 'family' | 'client' | 'custom'
-export type BalanceType = 'payable' | 'receivable'
+export type BalanceType = 'payable' | 'receivable' | 'opening_payable' | 'opening_receivable'
 
 export interface Contact {
   id: string
@@ -153,7 +153,7 @@ export interface TransactionFilters {
 // FUNDS SYSTEM
 // ============================================================
 
-export type FundTransactionType = 'allocate' | 'withdraw' | 'adjustment'
+export type FundTransactionType = 'allocate' | 'withdraw' | 'adjustment' | 'opening_balance'
 export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly'
 
 // ---- Fund ----
