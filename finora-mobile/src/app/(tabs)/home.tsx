@@ -162,7 +162,7 @@ export default function HomeScreen() {
         {/* 3. Budget Progress Bar */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Monthly Budget</Text>
-          <TouchableOpacity onPress={() => router.push('/budgets')}>
+          <TouchableOpacity onPress={() => router.push('/budgets' as any)}>
             <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Manage</Text>
           </TouchableOpacity>
         </View>
@@ -194,7 +194,7 @@ export default function HomeScreen() {
             <View style={{ alignItems: 'center', paddingVertical: 8 }}>
               <Text style={{ color: colors.textSecondary, marginBottom: 8 }}>No monthly budget set</Text>
               <TouchableOpacity
-                onPress={() => router.push('/budgets')}
+                onPress={() => router.push('/budgets' as any)}
                 style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: `${COLORS.primary}18`, borderRadius: 8 }}
               >
                 <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Set Budget</Text>
@@ -219,7 +219,7 @@ export default function HomeScreen() {
         {/* 4. Funds Snapshot */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Funds Snapshot</Text>
-          <TouchableOpacity onPress={() => router.push('/funds')}>
+          <TouchableOpacity onPress={() => router.push('/funds' as any)}>
             <Text style={{ color: COLORS.primary, fontWeight: '600' }}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -245,7 +245,7 @@ export default function HomeScreen() {
         {/* 5. People Snapshot */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>People Snapshot</Text>
-          <TouchableOpacity onPress={() => router.push('/people')}>
+          <TouchableOpacity onPress={() => router.push('/people' as any)}>
             <Text style={{ color: COLORS.primary, fontWeight: '600' }}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -275,7 +275,7 @@ export default function HomeScreen() {
         {/* 7. Recent Transactions */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Transactions</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/transactions' as any)}>
             <Text style={{ color: COLORS.primary, fontWeight: '600' }}>See All</Text>
           </TouchableOpacity>
         </View>
