@@ -5,20 +5,14 @@ import { AccountCard } from '@/components/accounts/AccountCard'
 import { TransactionRow } from '@/components/transactions/TransactionRow'
 import { FundsDashboardWidget } from '@/components/funds/FundsDashboardWidget'
 
-import { TrendingUp, TrendingDown, DollarSign, PiggyBank, Plus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, PiggyBank, Plus, ArrowLeftRight, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import type { AccountWithBalance, TransactionWithDetails } from '@/types'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
-/**
- * Computes account balance from transactions.
- * Income adds to to_account, expense subtracts from from_account,
- * transfer moves between accounts.
- */
 async function getAccountBalances(supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never, userId: string): Promise<AccountWithBalance[]> {
-  // Fetch all accounts
   const { data: accounts } = await supabase
     .from('accounts')
     .select('*')
@@ -28,13 +22,11 @@ async function getAccountBalances(supabase: ReturnType<typeof createClient> exte
 
   if (!accounts) return []
 
-  // Fetch all transactions for balance calculation
   const { data: transactions } = await supabase
     .from('transactions')
     .select('type, amount, from_account_id, to_account_id')
     .eq('user_id', userId)
 
-  // Calculate balance for each account
   const balanceMap: Record<string, number> = {}
 
   for (const acc of accounts) {
@@ -60,10 +52,10 @@ async function getAccountBalances(supabase: ReturnType<typeof createClient> exte
   return accounts.map((acc) => ({ ...acc, balance: balanceMap[acc.id] ?? 0 }))
 }
 
-async function getPeopleBalances(supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never, userId: string) {
+async function getPeopleData(supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never, userId: string) {
   const { data } = await supabase
     .from('people_balances')
-    .select('type, amount')
+    .select('id, type, amount, contact:contacts(name)')
     .eq('user_id', userId)
   
   let totalPayable = 0
@@ -75,7 +67,11 @@ async function getPeopleBalances(supabase: ReturnType<typeof createClient> exten
     else if (bal.type === 'receivable') totalReceivable += amount
   }
 
-  return { totalPayable, totalReceivable }
+  return { 
+    totalPayable, 
+    totalReceivable, 
+    balances: data?.slice(0, 3) || [] 
+  }
 }
 
 export default async function DashboardPage() {
@@ -85,11 +81,9 @@ export default async function DashboardPage() {
 
   const { start, end } = getCurrentMonthRange()
 
-  // Parallel data fetching for performance
-  const [accountsWithBalance, monthlyStatsRaw, recentTransactions, categoryExpenses] = await Promise.all([
+  const [accountsWithBalance, monthlyStatsRaw, recentTransactions, peopleData, fundsData, budgetsData] = await Promise.all([
     getAccountBalances(supabase, user.id),
 
-    // Monthly income and expenses
     supabase
       .from('transactions')
       .select('type, amount')
@@ -98,7 +92,6 @@ export default async function DashboardPage() {
       .gte('transaction_date', start)
       .lte('transaction_date', end),
 
-    // Recent transactions with joins
     supabase
       .from('transactions')
       .select(`
@@ -111,21 +104,22 @@ export default async function DashboardPage() {
       .order('transaction_date', { ascending: false })
       .limit(8),
 
-    // Category breakdown for current month
+    getPeopleData(supabase, user.id),
+
     supabase
-      .from('transactions')
-      .select(`
-        amount,
-        category:categories(id, name, color, icon, type)
-      `)
+      .from('funds')
+      .select('current_amount')
       .eq('user_id', user.id)
-      .eq('type', 'expense')
-      .gte('transaction_date', start)
-      .lte('transaction_date', end)
-      .not('category_id', 'is', null),
+      .eq('is_archived', false),
+
+    supabase
+      .from('budgets')
+      .select('amount')
+      .eq('user_id', user.id)
+      .eq('period', 'monthly')
   ])
 
-  // Calculate monthly stats
+  // Monthly stats
   let monthlyIncome = 0
   let monthlyExpenses = 0
   for (const tx of monthlyStatsRaw.data ?? []) {
@@ -133,73 +127,51 @@ export default async function DashboardPage() {
     if (tx.type === 'income') monthlyIncome += amount
     else if (tx.type === 'expense') monthlyExpenses += amount
   }
-
-  // Calculate total balance (sum of all accounts)
-  const totalBalance = accountsWithBalance.reduce((sum, acc) => sum + acc.balance, 0)
   const netSavings = monthlyIncome - monthlyExpenses
 
-  const { totalPayable, totalReceivable } = await getPeopleBalances(supabase, user.id)
+  // Budgets
+  const totalMonthlyLimit = (budgetsData.data ?? []).reduce((sum, b) => sum + parseFloat(String(b.amount)), 0)
+  const budgetUsedPct = totalMonthlyLimit > 0 ? Math.min(100, Math.round((monthlyExpenses / totalMonthlyLimit) * 100)) : 0
 
-  // Subtract reserved funds from available balance
-  const { data: fundsData } = await supabase
-    .from('funds')
-    .select('current_amount')
-    .eq('user_id', user.id)
-    .eq('is_archived', false)
-  const totalReservedInFunds = (fundsData ?? []).reduce(
-    (sum, f) => sum + parseFloat(String(f.current_amount)), 0
-  )
-
-  const actualBalance = totalBalance - totalPayable + totalReceivable - totalReservedInFunds
-
-  // Process category expenses for chart
-  const catMap: Record<string, { name: string; color: string; icon: string; amount: number }> = {}
-  for (const tx of categoryExpenses.data ?? []) {
-    const cat = (Array.isArray(tx.category) ? tx.category[0] : tx.category) as { id: string; name: string; color: string; icon: string } | null
-    if (!cat) continue
-    if (!catMap[cat.name]) {
-      catMap[cat.name] = { name: cat.name, color: cat.color, icon: cat.icon, amount: 0 }
-    }
-    catMap[cat.name].amount += parseFloat(String(tx.amount))
-  }
-  const categoryBreakdown = Object.values(catMap).sort((a, b) => b.amount - a.amount)
+  // Balances
+  const totalBalance = accountsWithBalance.reduce((sum, acc) => sum + acc.balance, 0)
+  const totalReservedInFunds = (fundsData.data ?? []).reduce((sum, f) => sum + parseFloat(String(f.current_amount)), 0)
+  const { totalPayable, totalReceivable } = peopleData
+  
+  const actualBalance = totalBalance - totalReservedInFunds - totalPayable + totalReceivable
 
   const statCards = [
     {
-      label: 'Available Balance',
-      value: formatCurrency(actualBalance),
-      icon: DollarSign,
-      gradient: 'from-violet-500/20 to-violet-500/5',
-      border: 'border-violet-500/20',
-      textColor: 'text-violet-400',
-      subtext: totalReservedInFunds > 0 ? `${formatCurrency(totalReservedInFunds)} in funds` : undefined,
-    },
-    {
-      label: 'This Month Income',
+      label: 'Income',
       value: formatCurrency(monthlyIncome),
       icon: TrendingUp,
       gradient: 'from-emerald-500/20 to-emerald-500/5',
       border: 'border-emerald-500/20',
       textColor: 'text-emerald-400',
-      subtext: undefined,
     },
     {
-      label: 'This Month Expenses',
+      label: 'Expenses',
       value: formatCurrency(monthlyExpenses),
       icon: TrendingDown,
       gradient: 'from-orange-500/20 to-orange-500/5',
       border: 'border-orange-500/20',
       textColor: 'text-orange-400',
-      subtext: undefined,
     },
     {
-      label: 'Net Savings',
+      label: 'Savings',
       value: formatCurrency(netSavings),
       icon: PiggyBank,
       gradient: netSavings >= 0 ? 'from-blue-500/20 to-blue-500/5' : 'from-gray-500/20 to-gray-500/5',
       border: netSavings >= 0 ? 'border-blue-500/20' : 'border-gray-500/20',
       textColor: netSavings >= 0 ? 'text-blue-400' : 'text-gray-400',
-      subtext: undefined,
+    },
+    {
+      label: 'Receivables',
+      value: formatCurrency(totalReceivable),
+      icon: Users,
+      gradient: 'from-violet-500/20 to-violet-500/5',
+      border: 'border-violet-500/20',
+      textColor: 'text-violet-400',
     },
   ]
 
@@ -211,92 +183,157 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Welcome back, {user.user_metadata?.full_name?.split(' ')[0] ?? 'there'}!
-            Here&apos;s your financial overview.
           </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Link
-            href="/transactions"
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Income</span>
-          </Link>
-          <Link
-            href="/transactions"
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Expense</span>
-          </Link>
-          <Link
-            href="/transactions"
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Transfer</span>
-          </Link>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* 1. Big Available Balance Card */}
+      <div className="rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-600 to-blue-900 p-8 relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-24 right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+        
+        <div className="relative z-10">
+          <p className="text-blue-100 font-medium mb-2">Available Balance</p>
+          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-2">
+            {formatCurrency(actualBalance)}
+          </h2>
+          <p className="text-sm text-blue-200/80">
+            {formatCurrency(totalBalance)} Total - {formatCurrency(totalReservedInFunds)} Reserved - {formatCurrency(totalPayable)} Payables
+          </p>
+        </div>
+      </div>
+
+      {/* 2. Quick Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => {
           const Icon = card.icon
           return (
-            <div
-              key={card.label}
-              className={`rounded-2xl border bg-gradient-to-br p-5 ${card.gradient} ${card.border}`}
-            >
+            <div key={card.label} className={`rounded-2xl border bg-gradient-to-br p-5 ${card.gradient} ${card.border}`}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm text-muted-foreground">{card.label}</p>
                 <div className={`p-2 rounded-xl bg-white/10 ${card.textColor}`}>
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
-              <p className={`text-2xl font-bold ${card.textColor}`}>{card.value}</p>
-              {card.subtext && (
-                <p className="text-xs text-muted-foreground mt-1">{card.subtext} reserved</p>
-              )}
+              <p className={`text-xl font-bold ${card.textColor}`}>{card.value}</p>
             </div>
           )
         })}
       </div>
 
-      {/* Quick Insights & Funds Widget */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Quick Insights */}
-        <div className="rounded-2xl border border-white/10 bg-card p-5">
-           <h3 className="text-sm font-semibold text-muted-foreground mb-4">Quick Insights</h3>
-           <div className="space-y-4">
-             <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
-                <span className="text-sm">Highest Spending Category</span>
-                <span className="text-sm font-medium">
-                  {categoryBreakdown.length > 0 ? categoryBreakdown[0].name : 'N/A'}
-                </span>
-             </div>
-             <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
-                <span className="text-sm">Top Expense Amount</span>
-                <span className="text-sm font-medium text-orange-400">
-                  {categoryBreakdown.length > 0 ? formatCurrency(categoryBreakdown[0].amount) : 'PKR 0'}
-                </span>
-             </div>
-             <div className="flex justify-between items-center bg-accent/50 p-3 rounded-lg">
-                <span className="text-sm">Reserved in Funds</span>
-                <span className="text-sm font-medium text-violet-400">
-                  {formatCurrency(totalReservedInFunds)}
-                </span>
-             </div>
-           </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* 3. Budget Progress */}
+        <div className="rounded-2xl border border-white/10 bg-card p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-semibold text-lg">Monthly Budget</h3>
+            <Link href="/budgets" className="text-sm text-primary hover:underline">Manage</Link>
+          </div>
+          {totalMonthlyLimit > 0 ? (
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Spent</span>
+                <span className="font-medium">{formatCurrency(monthlyExpenses)} of {formatCurrency(totalMonthlyLimit)}</span>
+              </div>
+              <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${budgetUsedPct >= 100 ? 'bg-red-500' : budgetUsedPct > 80 ? 'bg-orange-500' : 'bg-primary'}`} 
+                  style={{ width: `${budgetUsedPct}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-right mt-2">{budgetUsedPct}% Used</p>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground text-sm mb-4">No monthly budget set</p>
+              <Link href="/budgets" className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors">
+                Set Budget
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Funds Widget */}
-        <FundsDashboardWidget />
+        {/* 6. Quick Actions */}
+        <div className="rounded-2xl border border-white/10 bg-card p-6">
+          <h3 className="font-semibold text-lg mb-6">Quick Actions</h3>
+          <div className="grid grid-cols-4 gap-4">
+            <Link href="/transactions" className="flex flex-col items-center gap-2 group">
+              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+                <TrendingDown className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground text-center">Expense</span>
+            </Link>
+            <Link href="/transactions" className="flex flex-col items-center gap-2 group">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground text-center">Income</span>
+            </Link>
+            <Link href="/transactions" className="flex flex-col items-center gap-2 group">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                <ArrowLeftRight className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground text-center">Transfer</span>
+            </Link>
+            <Link href="/funds" className="flex flex-col items-center gap-2 group">
+              <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-500 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground text-center">Allocate</span>
+            </Link>
+          </div>
+        </div>
+
       </div>
 
-      {/* Accounts and Recent Transactions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 4. Funds Snapshot */}
+        <FundsDashboardWidget />
+
+        {/* 5. People Snapshot */}
+        <div className="rounded-2xl border border-white/10 bg-card p-5 md:p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">People Snapshot</h2>
+              <p className="text-sm text-muted-foreground mt-1">Money shared with others</p>
+            </div>
+            <Link href="/people" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+              View all
+            </Link>
+          </div>
+          <div className="flex-1 space-y-3">
+            {peopleData.balances.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed rounded-xl border-white/10 bg-white/5">
+                <Users className="w-8 h-8 text-muted-foreground/50 mb-3" />
+                <p className="text-sm font-medium text-foreground">No people tracking</p>
+                <p className="text-xs text-muted-foreground mt-1">Track money you owe or are owed</p>
+              </div>
+            ) : (
+              peopleData.balances.map((b: any) => (
+                <div key={b.id} className="flex items-center justify-between p-4 rounded-xl bg-accent/50 border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary font-bold text-sm">{b.contact?.name?.[0]?.toUpperCase()}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-foreground">{b.contact?.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {b.type === 'payable' ? 'Money Held For Them' : 'Owes You'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`font-semibold text-sm ${b.type === 'payable' ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {formatCurrency(b.amount)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Accounts & 7. Recent Transactions */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Account Balances */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Accounts</h2>
@@ -320,7 +357,6 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Recent Transactions */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Recent Transactions</h2>

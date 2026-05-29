@@ -3,8 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -35,6 +33,7 @@ export default function AddAccountScreen() {
   const [name, setName] = useState('');
   const [type, setType] = useState('bank');
   const [currency, setCurrency] = useState('PKR');
+  const [initialBalance, setInitialBalance] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
@@ -43,11 +42,18 @@ export default function AddAccountScreen() {
       return;
     }
 
+    const parsedInitial = parseFloat(initialBalance.replace(/,/g, '')) || 0;
+    if (initialBalance && parsedInitial < 0) {
+      Alert.alert('Invalid Balance', 'Initial balance cannot be negative.');
+      return;
+    }
+
     setIsSaving(true);
     const result = await addAccount({
       name: name.trim(),
       type,
       currency,
+      initialBalance: parsedInitial,
     });
     setIsSaving(false);
 
@@ -118,6 +124,20 @@ export default function AddAccountScreen() {
             })}
           </View>
 
+          {/* Initial Balance */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginTop: 24 }]}>INITIAL BALANCE (OPTIONAL)</Text>
+          <Input
+            value={initialBalance}
+            onChangeText={setInitialBalance}
+            placeholder="e.g. 50000"
+            leftIcon="wallet-outline"
+            keyboardType="numeric"
+            maxLength={15}
+          />
+          <Text style={[styles.hint, { color: colors.textMuted }]}>
+            Enter the current balance already in this account.
+          </Text>
+
           {/* Currency */}
           <Text style={[styles.label, { color: colors.textSecondary, marginTop: 24 }]}>CURRENCY</Text>
           <Input
@@ -174,6 +194,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
     marginBottom: 8,
+    marginLeft: 2,
+  },
+  hint: {
+    fontSize: 12,
+    marginTop: 4,
     marginLeft: 2,
   },
   typeGrid: {

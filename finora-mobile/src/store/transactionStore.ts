@@ -37,6 +37,9 @@ interface TransactionStore {
   addAccount: (input: AddAccountInput) => Promise<{ success: boolean; error?: string }>;
   addCategory: (input: AddCategoryInput) => Promise<{ success: boolean; error?: string }>;
 
+  // Update
+  updateTransaction: (id: string, input: Partial<AddTransactionInput>) => Promise<{ success: boolean; error?: string }>;
+
   // Delete
   deleteTransaction: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
@@ -52,6 +55,7 @@ export interface AddAccountInput {
   name: string;
   type: string;
   currency: string;
+  initialBalance?: number;
 }
 
 export interface AddTransactionInput {
@@ -214,6 +218,18 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not logged in' };
 
+      // ── Balance guard: prevent negative balance on expense/transfer ──
+      if (input.type === 'expense' || input.type === 'transfer') {
+        const accounts = get().accounts;
+        const fromAccount = accounts.find(a => a.id === input.account_id);
+        if (fromAccount && fromAccount.balance < input.amount) {
+          return {
+            success: false,
+            error: `Insufficient balance. ${fromAccount.name} has PKR ${fromAccount.balance.toLocaleString()} but you are trying to ${input.type} PKR ${input.amount.toLocaleString()}.`,
+          };
+        }
+      }
+
       const payload: Record<string, any> = {
         user_id: user.id,
         type: input.type,
@@ -251,17 +267,58 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not logged in' };
 
-      const { error } = await supabase.from('accounts').insert({
-        user_id: user.id,
-        name: input.name,
-        type: input.type,
-        currency: input.currency,
-      });
+      const { data: newAccount, error } = await supabase
+        .from('accounts')
+        .insert({
+          user_id: user.id,
+          name: input.name,
+          type: input.type,
+          currency: input.currency,
+        })
+        .select('id')
+        .single();
 
       if (error) return { success: false, error: error.message };
 
+      // If initial balance provided, insert an opening income transaction
+      if (input.initialBalance && input.initialBalance > 0 && newAccount?.id) {
+        await supabase.from('transactions').insert({
+          user_id: user.id,
+          type: 'income',
+          amount: input.initialBalance,
+          to_account_id: newAccount.id,
+          note: 'Opening balance',
+          transaction_date: new Date().toISOString().split('T')[0],
+        });
+      }
+
       // Refresh accounts list
-      await get().fetchAccounts();
+      await get().fetchAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  updateTransaction: async (id, input) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not logged in' };
+
+      const patch: Record<string, any> = {};
+      if (input.amount !== undefined) patch.amount = input.amount;
+      if (input.note !== undefined) patch.note = input.note || null;
+      if (input.transaction_date !== undefined) patch.transaction_date = input.transaction_date;
+
+      const { error } = await supabase
+        .from('transactions')
+        .update(patch)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) return { success: false, error: error.message };
+
+      await get().fetchAll();
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e.message };

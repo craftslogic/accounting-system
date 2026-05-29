@@ -56,6 +56,34 @@ export async function createTransactionAction(
   try {
     const { supabase, user } = await getCurrentUser()
 
+    // ── Balance guard: prevent negative balance on expense / transfer ──
+    const fromAccountId = result.data.from_account_id
+    if ((result.data.type === 'expense' || result.data.type === 'transfer') && fromAccountId) {
+      // Compute current balance of the source account from all transactions
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('type, amount, from_account_id, to_account_id')
+        .eq('user_id', user.id)
+
+      let balance = 0
+      for (const tx of txs ?? []) {
+        const amt = parseFloat(String(tx.amount))
+        if (tx.type === 'income' && tx.to_account_id === fromAccountId) balance += amt
+        else if (tx.type === 'expense' && tx.from_account_id === fromAccountId) balance -= amt
+        else if (tx.type === 'transfer') {
+          if (tx.from_account_id === fromAccountId) balance -= amt
+          if (tx.to_account_id === fromAccountId) balance += amt
+        }
+      }
+
+      if (balance < result.data.amount) {
+        return {
+          success: false,
+          error: `Insufficient balance. Account has PKR ${balance.toLocaleString()} but transaction is PKR ${result.data.amount.toLocaleString()}.`,
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('transactions')
       .insert({ ...result.data, user_id: user.id })

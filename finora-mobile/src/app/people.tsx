@@ -19,7 +19,7 @@ function formatCurrency(n: number) {
   }).format(n);
 }
 
-const CONTACT_TYPES = ['friend', 'family', 'client', 'custom'] as const;
+const PRESET_TYPES = ['friend', 'family', 'client', 'colleague'] as const;
 
 export default function PeopleScreen() {
   const { colors, isDark } = useTheme();
@@ -28,7 +28,10 @@ export default function PeopleScreen() {
 
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
-  const [type, setType] = useState<typeof CONTACT_TYPES[number]>('friend');
+  // 'custom' means user chose "Other"
+  const [type, setType] = useState<string>('friend');
+  const [isCustom, setIsCustom] = useState(false);
+  const [customType, setCustomType] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -44,6 +47,8 @@ export default function PeopleScreen() {
   const openModal = () => {
     setName('');
     setType('friend');
+    setIsCustom(false);
+    setCustomType('');
     setShowModal(true);
   };
 
@@ -52,8 +57,9 @@ export default function PeopleScreen() {
       Alert.alert('Invalid Name', 'Please enter a name.');
       return;
     }
+    const finalType = isCustom ? (customType.trim() || 'other') : type;
     setIsSaving(true);
-    const res = await addContact(name.trim(), type);
+    const res = await addContact(name.trim(), finalType);
     setIsSaving(false);
     if (res.success) {
       setShowModal(false);
@@ -141,7 +147,7 @@ export default function PeopleScreen() {
             const isNeutral = c.balance === 0;
             const isPositive = c.balance > 0;
             const balColor = isNeutral ? colors.textMuted : (isPositive ? COLORS.success : COLORS.danger);
-            
+
             return (
               <TouchableOpacity
                 key={c.id}
@@ -189,20 +195,49 @@ export default function PeopleScreen() {
 
             <Text style={[styles.label, { color: colors.textSecondary }]}>RELATIONSHIP</Text>
             <View style={styles.typeGrid}>
-              {CONTACT_TYPES.map(t => (
+              {PRESET_TYPES.map(t => (
                 <TouchableOpacity
-                  key={t} onPress={() => setType(t)}
+                  key={t}
+                  onPress={() => { setType(t); setIsCustom(false); }}
                   style={[styles.typeBtn, {
-                    backgroundColor: type === t ? `${COLORS.primary}18` : (isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted),
-                    borderColor: type === t ? COLORS.primary : 'transparent',
+                    backgroundColor: (!isCustom && type === t) ? `${COLORS.primary}18` : (isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted),
+                    borderColor: (!isCustom && type === t) ? COLORS.primary : 'transparent',
                   }]}
                 >
-                  <Text style={{ color: type === t ? COLORS.primary : colors.textMuted, fontWeight: type === t ? '700' : '500', fontSize: 13 }}>
+                  <Text style={{ color: (!isCustom && type === t) ? COLORS.primary : colors.textMuted, fontWeight: (!isCustom && type === t) ? '700' : '500', fontSize: 13 }}>
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </Text>
                 </TouchableOpacity>
               ))}
+
+              {/* Other / Custom */}
+              <TouchableOpacity
+                onPress={() => { setIsCustom(true); }}
+                style={[styles.typeBtn, {
+                  backgroundColor: isCustom ? `${COLORS.primary}18` : (isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted),
+                  borderColor: isCustom ? COLORS.primary : 'transparent',
+                }]}
+              >
+                <Text style={{ color: isCustom ? COLORS.primary : colors.textMuted, fontWeight: isCustom ? '700' : '500', fontSize: 13 }}>
+                  Other
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {/* Custom relationship input – shown only when "Other" is selected */}
+            {isCustom && (
+              <>
+                <Text style={[styles.label, { color: colors.textSecondary, marginTop: 8 }]}>CUSTOM RELATIONSHIP</Text>
+                <TextInput
+                  style={[styles.input, { color: colors.text, borderColor: COLORS.primary, backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted }]}
+                  placeholder="e.g. Mentor, Business Partner…"
+                  placeholderTextColor={colors.textMuted}
+                  value={customType}
+                  onChangeText={setCustomType}
+                  autoFocus
+                />
+              </>
+            )}
 
             <View style={styles.sheetBtns}>
               <TouchableOpacity onPress={() => setShowModal(false)} style={[styles.cancelBtn, { borderColor: colors.border }]}>
@@ -250,9 +285,9 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 18, fontWeight: '800', marginBottom: 16 },
   label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
   input: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 16 },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   typeBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5 },
-  sheetBtns: { flexDirection: 'row', gap: 12 },
+  sheetBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   cancelBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
   saveBtn: { flex: 2, padding: 14, borderRadius: 12, alignItems: 'center' },
   saveBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },

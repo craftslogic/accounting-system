@@ -1,14 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   ScrollView,
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  Dimensions,
   TouchableOpacity,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,6 +18,8 @@ import { TransactionRow } from '@/components/TransactionRow';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import { useFundStore } from '@/store/fundStore';
+import { usePeopleStore } from '@/store/peopleStore';
+import { useBudgetStore } from '@/store/budgetStore';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 const { width } = Dimensions.get('window');
@@ -44,21 +44,46 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const { user } = useAuthStore();
   const router = useRouter();
-  const { accounts, transactions, isLoading, fetchAll } = useTransactionStore();
-  const { funds, fetchFunds, getTotalReserved } = useFundStore();
+
+  const { accounts, transactions, isLoading: txLoading, fetchAll } = useTransactionStore();
+  const { funds, fetchFunds, getTotalReserved, isLoading: fundsLoading } = useFundStore();
+  const { contacts, balances, fetchContacts, fetchBalances, isLoading: peopleLoading } = usePeopleStore();
+  const { fetchBudgets, getTotalMonthlyLimit, isLoading: budgetsLoading } = useBudgetStore();
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'there';
+  const isLoading = txLoading || fundsLoading || peopleLoading || budgetsLoading;
 
   useEffect(() => {
     fetchAll();
     fetchFunds();
+    fetchContacts();
+    fetchBalances();
+    fetchBudgets();
   }, []);
 
-  // Computed stats from real data
+  const onRefresh = () => {
+    fetchAll();
+    fetchFunds();
+    fetchContacts();
+    fetchBalances();
+    fetchBudgets();
+  };
+
+  // ── Computed Stats ──────────────────────────────
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
   const totalReserved = getTotalReserved();
-  const availableBalance = totalBalance - totalReserved;
 
+  let totalPayable = 0;
+  let totalReceivable = 0;
+  balances.forEach(b => {
+    if (b.type === 'payable') totalPayable += b.amount;
+    else if (b.type === 'receivable') totalReceivable += b.amount;
+  });
+
+  // Available Balance = All Accounts - Reserved Funds - Money Held For Others (Payable) + Receivable
+  const availableBalance = totalBalance - totalReserved - totalPayable + totalReceivable;
+
+  // Monthly Txs
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const monthlyTxs = transactions.filter(t => t.date >= monthStart);
@@ -66,85 +91,39 @@ export default function HomeScreen() {
   const monthlyExpenses = monthlyTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const savings = monthlyIncome - monthlyExpenses;
 
-  const accountTypeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
-    cash: 'cash-outline',
-    bank: 'business-outline',
-    wallet: 'wallet-outline',
-    savings: 'wallet-outline',
-    custom: 'card-outline',
-    investment: 'trending-up-outline',
-  };
-
-  const accountTypeColors: Record<string, string> = {
-    cash: COLORS.accent,
-    bank: COLORS.primary,
-    wallet: '#8B5CF6',
-    savings: '#06B6D4',
-    investment: '#F59E0B',
-    custom: '#64748B',
-  };
+  // Budget
+  const totalMonthlyLimit = getTotalMonthlyLimit();
+  const budgetUsedPct = totalMonthlyLimit > 0 ? Math.min(100, Math.round((monthlyExpenses / totalMonthlyLimit) * 100)) : 0;
 
   const quickActions = [
-    {
-      label: 'Add Expense',
-      icon: 'remove-circle-outline' as const,
-      color: COLORS.danger,
-      bg: `${COLORS.danger}18`,
-      route: '/(tabs)/add',
-    },
-    {
-      label: 'Add Income',
-      icon: 'add-circle-outline' as const,
-      color: COLORS.accent,
-      bg: COLORS.accentLight,
-      route: '/(tabs)/add',
-    },
-    {
-      label: 'My Funds',
-      icon: 'wallet-outline' as const,
-      color: '#8B5CF6',
-      bg: '#8B5CF618',
-      route: '/funds',
-    },
+    { label: 'Add Expense', icon: 'remove-circle-outline' as const, color: COLORS.danger, route: '/(tabs)/add' },
+    { label: 'Add Income', icon: 'add-circle-outline' as const, color: COLORS.accent, route: '/(tabs)/add' },
+    { label: 'Transfer', icon: 'swap-horizontal-outline' as const, color: COLORS.primary, route: '/(tabs)/add' },
+    { label: 'Allocate Funds', icon: 'wallet-outline' as const, color: '#8B5CF6', route: '/funds' },
   ];
 
   return (
     <ScreenWrapper>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={fetchAll}
-            tintColor={COLORS.primary}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
         {/* ── Header ─────────────────────────────── */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-              {getGreeting()},
-            </Text>
-            <Text style={[styles.userName, { color: colors.text }]}>
-              {firstName} 👋
-            </Text>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()},</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{firstName} 👋</Text>
           </View>
-
           <TouchableOpacity
-            style={[
-              styles.avatarBtn,
-              { backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted },
-            ]}
+            style={[styles.avatarBtn, { backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted }]}
             onPress={() => router.push('/(tabs)/menu')}
           >
             <Ionicons name="person" size={20} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* ── Balance Card ────────────────────────── */}
+        {/* 1. Big Card: Available Balance */}
         <LinearGradient
           colors={isDark ? GRADIENTS.dark : GRADIENTS.primary}
           start={{ x: 0, y: 0 }}
@@ -153,410 +132,199 @@ export default function HomeScreen() {
         >
           <View style={styles.cardCircle1} />
           <View style={styles.cardCircle2} />
-
           <View style={styles.balanceInner}>
             <Text style={styles.balanceLabel}>Available Balance</Text>
             <Text style={styles.balanceAmount}>{formatCurrency(availableBalance)}</Text>
-
-            {totalReserved > 0 && (
-              <Text style={styles.reservedLabel}>
-                {formatCurrency(totalReserved)} reserved in {funds.length} fund{funds.length !== 1 ? 's' : ''}
-              </Text>
-            )}
-
-            <View style={styles.balanceMeta}>
-              <View style={styles.balanceMetaItem}>
-                <View style={[styles.metaDot, { backgroundColor: COLORS.accent }]} />
-                <View>
-                  <Text style={styles.metaLabel}>Monthly Savings</Text>
-                  <Text style={styles.metaValue}>{formatCurrency(savings)}</Text>
-                </View>
-              </View>
-              <View style={styles.balanceMetaItem}>
-                <View style={[styles.metaDot, { backgroundColor: '#F59E0B' }]} />
-                <View>
-                  <Text style={styles.metaLabel}>Budget Used</Text>
-                  <Text style={styles.metaValue}>
-                    {monthlyIncome > 0 ? Math.round((monthlyExpenses / monthlyIncome) * 100) : 0}%
-                  </Text>
-                </View>
-              </View>
-            </View>
+            <Text style={styles.balanceSub}>
+              {formatCurrency(totalBalance)} Total - {formatCurrency(totalReserved)} Reserved - {formatCurrency(totalPayable)} Payables
+            </Text>
           </View>
         </LinearGradient>
 
-        {/* ── Quick Stats ─────────────────────────── */}
+        {/* 2. 4 Quick Cards */}
         <View style={styles.statsGrid}>
-          <Card style={styles.statCard} elevated>
-            <View style={[styles.statIcon, { backgroundColor: COLORS.accentLight }]}>
-              <Ionicons name="arrow-down-circle" size={18} color={COLORS.accent} />
-            </View>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Income</Text>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {formatCurrency(monthlyIncome)}
-            </Text>
-          </Card>
-
-          <Card style={styles.statCard} elevated>
-            <View style={[styles.statIcon, { backgroundColor: `${COLORS.danger}18` }]}>
-              <Ionicons name="arrow-up-circle" size={18} color={COLORS.danger} />
-            </View>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Expenses</Text>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {formatCurrency(monthlyExpenses)}
-            </Text>
-          </Card>
-
-          <Card style={styles.statCard} elevated>
-            <View style={[styles.statIcon, { backgroundColor: COLORS.primaryMuted }]}>
-              <Ionicons name="trending-up" size={18} color={COLORS.primary} />
-            </View>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Savings</Text>
-            <Text style={[styles.statValue, { color: savings >= 0 ? COLORS.accent : COLORS.danger }]}>
-              {formatCurrency(savings)}
-            </Text>
-          </Card>
-
-          <Card style={styles.statCard} elevated>
-            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="wallet" size={18} color="#F59E0B" />
-            </View>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Accounts</Text>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {accounts.length}
-            </Text>
-          </Card>
-        </View>
-
-        {/* ── Quick Actions ───────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-        </View>
-
-        <View style={styles.quickActions}>
-          {quickActions.map((action) => (
-            <TouchableOpacity
-              key={action.label}
-              style={[
-                styles.quickAction,
-                {
-                  backgroundColor: colors.bgCard,
-                  borderColor: colors.border,
-                },
-              ]}
-              activeOpacity={0.8}
-              onPress={() => router.push(action.route as any)}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: action.bg }]}>
-                <Ionicons name={action.icon} size={22} color={action.color} />
+          {[
+            { label: 'Income', value: monthlyIncome, color: COLORS.accent, icon: 'arrow-down-circle' as const },
+            { label: 'Expenses', value: monthlyExpenses, color: COLORS.danger, icon: 'arrow-up-circle' as const },
+            { label: 'Savings', value: savings, color: '#2563EB', icon: 'trending-up' as const },
+            { label: 'Receivables', value: totalReceivable, color: '#8B5CF6', icon: 'people' as const },
+          ].map((s, i) => (
+            <Card key={i} style={styles.statCard} elevated padding={12}>
+              <View style={[styles.statIcon, { backgroundColor: `${s.color}18` }]}>
+                <Ionicons name={s.icon} size={18} color={s.color} />
               </View>
-              <Text style={[styles.quickActionLabel, { color: colors.textSecondary }]}>
-                {action.label}
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
+              <Text style={[styles.statValue, { color: s.color }]}>{formatCurrency(s.value)}</Text>
+            </Card>
+          ))}
+        </View>
+
+        {/* 3. Budget Progress Bar */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Monthly Budget</Text>
+          <TouchableOpacity onPress={() => router.push('/budgets')}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Manage</Text>
+          </TouchableOpacity>
+        </View>
+        <Card elevated padding={16} style={{ marginBottom: 24 }}>
+          {totalMonthlyLimit > 0 ? (
+            <>
+              <View style={styles.budgetRow}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Spent</Text>
+                <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>
+                  {formatCurrency(monthlyExpenses)} of {formatCurrency(totalMonthlyLimit)}
+                </Text>
+              </View>
+              <View style={[styles.progressBarBg, { backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted }]}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: `${budgetUsedPct}%`,
+                      backgroundColor: budgetUsedPct >= 100 ? COLORS.danger : (budgetUsedPct > 80 ? COLORS.warning : COLORS.primary),
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 6, textAlign: 'right' }}>
+                {budgetUsedPct}% Used
               </Text>
+            </>
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+              <Text style={{ color: colors.textSecondary, marginBottom: 8 }}>No monthly budget set</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/budgets')}
+                style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: `${COLORS.primary}18`, borderRadius: 8 }}
+              >
+                <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Set Budget</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Card>
+
+        {/* 6. Quick Actions */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+        <View style={styles.quickActionsRow}>
+          {quickActions.map((qa, i) => (
+            <TouchableOpacity key={i} style={styles.qaBtn} onPress={() => router.push(qa.route as any)}>
+              <View style={[styles.qaIcon, { backgroundColor: `${qa.color}15` }]}>
+                <Ionicons name={qa.icon} size={22} color={qa.color} />
+              </View>
+              <Text style={[styles.qaLabel, { color: colors.textSecondary }]}>{qa.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* ── Accounts ────────────────────────────── */}
-        {accounts.length > 0 && (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Accounts</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/accounts')}>
-                <Text style={[styles.seeAll, { color: COLORS.primary }]}>See all</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.accountsScroll}
-            >
-              {accounts.map((account) => {
-                const iconColor = accountTypeColors[account.type] ?? COLORS.primary;
-                return (
-                  <View
-                    key={account.id}
-                    style={[
-                      styles.accountCard,
-                      {
-                        backgroundColor: isDark ? `${iconColor}18` : `${iconColor}12`,
-                        borderColor: isDark ? `${iconColor}30` : `${iconColor}25`,
-                      },
-                    ]}
-                  >
-                    <View style={[styles.accountIcon, { backgroundColor: `${iconColor}25` }]}>
-                      <Ionicons
-                        name={accountTypeIcons[account.type] ?? 'wallet-outline'}
-                        size={18}
-                        color={iconColor}
-                      />
-                    </View>
-                    <Text style={[styles.accountName, { color: colors.text }]}>
-                      {account.name}
-                    </Text>
-                    <Text style={[styles.accountBalance, { color: iconColor }]}>
-                      {formatCurrency(account.balance)}
-                    </Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </>
-        )}
-
-        {/* ── Recent Transactions ─────────────────── */}
+        {/* 4. Funds Snapshot */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
-            <Text style={[styles.seeAll, { color: COLORS.primary }]}>See all</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Funds Snapshot</Text>
+          <TouchableOpacity onPress={() => router.push('/funds')}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>View All</Text>
           </TouchableOpacity>
         </View>
+        <Card elevated padding={16} style={{ marginBottom: 24 }}>
+          {funds.length > 0 ? (
+            funds.slice(0, 3).map((f, i) => (
+              <View key={f.id} style={[styles.snapshotRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
+                <View style={[styles.snapshotIcon, { backgroundColor: `${f.color}22` }]}>
+                  <Ionicons name={f.icon as any} size={18} color={f.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>{f.name}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{f.progress_percentage}% achieved</Text>
+                </View>
+                <Text style={{ color: colors.text, fontWeight: '700' }}>{formatCurrency(f.current_amount)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 8 }}>No funds created yet.</Text>
+          )}
+        </Card>
 
-        {transactions.length === 0 ? (
-          <View style={[styles.emptyTxCard, {
-            backgroundColor: isDark ? COLORS.dark.bgCard : '#FFF',
-            borderColor: isDark ? COLORS.dark.border : COLORS.light.border,
-          }]}>
-            <Ionicons name="receipt-outline" size={28} color={colors.textMuted} />
-            <Text style={[styles.emptyTxText, { color: colors.textMuted }]}>
-              No transactions yet
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/add')}>
-              <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>
-                Add your first one →
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <Card elevated>
-            {transactions.slice(0, 5).map((tx, i) => (
-              <TransactionRow
-                key={tx.id}
-                transaction={tx}
-                isLast={i === Math.min(transactions.length, 5) - 1}
-              />
-            ))}
-          </Card>
-        )}
+        {/* 5. People Snapshot */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>People Snapshot</Text>
+          <TouchableOpacity onPress={() => router.push('/people')}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        <Card elevated padding={16} style={{ marginBottom: 24 }}>
+          {balances.length > 0 ? (
+            balances.slice(0, 3).map((b, i) => (
+              <View key={b.id} style={[styles.snapshotRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
+                <View style={[styles.snapshotIcon, { backgroundColor: `${COLORS.primary}15` }]}>
+                  <Text style={{ color: COLORS.primary, fontWeight: '700' }}>{b.contact?.name.charAt(0)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>{b.contact?.name}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, textTransform: 'capitalize' }}>
+                    {b.type === 'payable' ? 'Money Held For Them' : 'Owes You'}
+                  </Text>
+                </View>
+                <Text style={{ color: b.type === 'payable' ? COLORS.danger : COLORS.success, fontWeight: '700' }}>
+                  {formatCurrency(b.amount)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 8 }}>No people balances.</Text>
+          )}
+        </Card>
 
-        <View style={{ height: 100 }} />
+        {/* 7. Recent Transactions */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Transactions</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>See All</Text>
+          </TouchableOpacity>
+        </View>
+        <Card elevated padding={0} style={{ marginBottom: 40, overflow: 'hidden' }}>
+          {transactions.length > 0 ? (
+            transactions.slice(0, 5).map((t, i) => (
+              <View key={t.id} style={{ paddingHorizontal: 16 }}>
+                <TransactionRow transaction={t} isLast={i === 4 || i === transactions.length - 1} />
+              </View>
+            ))
+          ) : (
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted }}>No recent transactions</Text>
+            </View>
+          )}
+        </Card>
+
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: -0.1,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.7,
-    marginTop: 2,
-  },
-  avatarBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  balanceCard: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    overflow: 'hidden',
-    minHeight: 160,
-  },
-  cardCircle1: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    top: -40,
-    right: -30,
-  },
-  cardCircle2: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    bottom: -20,
-    left: 30,
-  },
-  balanceInner: { gap: 8 },
-  balanceLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '500',
-    letterSpacing: -0.1,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1.2,
-    marginTop: 2,
-  },
-  reservedLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
-    marginTop: -4,
-    marginBottom: 4,
-  },
-  balanceMeta: {
-    flexDirection: 'row',
-    gap: 24,
-    marginTop: 12,
-  },
-  balanceMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  metaDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
-  },
-  metaValue: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: (width - 50) / 2,
-    gap: 8,
-    padding: 14,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: -0.1,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  seeAll: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 24,
-  },
-  quickAction: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-  },
-  quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: -0.1,
-  },
-  accountsScroll: {
-    gap: 12,
-    paddingRight: 4,
-    marginBottom: 24,
-  },
-  accountCard: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    padding: 16,
-    width: 140,
-    gap: 8,
-  },
-  accountIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accountName: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-  },
-  accountBalance: {
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-  },
-  emptyTxCard: {
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTxText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  greeting: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  userName: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  avatarBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  balanceCard: { borderRadius: 24, padding: 24, marginBottom: 24, overflow: 'hidden' },
+  cardCircle1: { position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.1)' },
+  cardCircle2: { position: 'absolute', bottom: -60, right: 40, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.1)' },
+  balanceInner: { zIndex: 1 },
+  balanceLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '500', marginBottom: 8 },
+  balanceAmount: { color: '#FFF', fontSize: 36, fontWeight: '800', letterSpacing: -1, marginBottom: 8 },
+  balanceSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
+  statCard: { width: (width - 52) / 2, gap: 6 },
+  statIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  statLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statValue: { fontSize: 16, fontWeight: '800', letterSpacing: -0.5 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  budgetRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  progressBarBg: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 4 },
+  quickActionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
+  qaBtn: { alignItems: 'center', width: (width - 40) / 4 },
+  qaIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  qaLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  snapshotRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  snapshotIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 });
