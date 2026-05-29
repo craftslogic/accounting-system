@@ -8,12 +8,14 @@ const typeIcons = {
   income: ArrowDownLeft,
   expense: ArrowUpRight,
   transfer: ArrowLeftRight,
+  opening_balance: ArrowDownLeft,
 }
 
 const typeBgColors = {
   income: 'bg-emerald-500/10 text-emerald-400',
   expense: 'bg-red-500/10 text-red-400',
   transfer: 'bg-blue-500/10 text-blue-400',
+  opening_balance: 'bg-purple-500/10 text-purple-400',
 }
 
 interface TransactionRowProps {
@@ -30,7 +32,7 @@ export function TransactionRow({ transaction, actions }: TransactionRowProps) {
   const bgClass = typeBgColors[transaction.type]
   
   // Determine display amount with sign
-  const displayAmount = transaction.type === 'income'
+  const displayAmount = (transaction.type === 'income' || transaction.type === 'opening_balance')
     ? `+${formatCurrency(transaction.amount, transaction.to_account?.currency)}`
     : transaction.type === 'expense'
     ? `-${formatCurrency(transaction.amount, transaction.from_account?.currency)}`
@@ -39,7 +41,7 @@ export function TransactionRow({ transaction, actions }: TransactionRowProps) {
   const accountLabel =
     transaction.type === 'transfer'
       ? `${transaction.from_account?.name} → ${transaction.to_account?.name}`
-      : transaction.type === 'income'
+      : (transaction.type === 'income' || transaction.type === 'opening_balance')
       ? transaction.to_account?.name
       : transaction.from_account?.name
 

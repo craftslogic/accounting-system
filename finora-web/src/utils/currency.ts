@@ -22,11 +22,11 @@ export function formatCurrency(
  */
 export function formatTransactionAmount(
   amount: number,
-  type: 'income' | 'expense' | 'transfer',
+  type: 'income' | 'expense' | 'transfer' | 'opening_balance',
   currency: string = 'PKR'
 ): string {
   const formatted = formatCurrency(Math.abs(amount), currency)
-  if (type === 'income') return `+${formatted}`
+  if (type === 'income' || type === 'opening_balance') return `+${formatted}`
   if (type === 'expense') return `-${formatted}`
   return formatted
 }
@@ -34,7 +34,7 @@ export function formatTransactionAmount(
 /**
  * Get CSS class for transaction amount color
  */
-export function getAmountColor(type: 'income' | 'expense' | 'transfer'): string {
+export function getAmountColor(type: 'income' | 'expense' | 'transfer' | 'opening_balance'): string {
   switch (type) {
     case 'income':
       return 'text-emerald-400'
@@ -42,6 +42,8 @@ export function getAmountColor(type: 'income' | 'expense' | 'transfer'): string 
       return 'text-red-400'
     case 'transfer':
       return 'text-blue-400'
+    case 'opening_balance':
+      return 'text-purple-400'
     default:
       return 'text-foreground'
   }
