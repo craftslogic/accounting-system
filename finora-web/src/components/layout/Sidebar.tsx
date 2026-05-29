@@ -89,7 +89,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Mobile App Download */}
       <div className="p-4 border-t border-white/10">
         <a 
-          href="https://github.com/craftslogic/accounting-system/releases/download/finora/application-b0ca404c-60c4-4cfa-b47c-a0c3829bb06a.apk"
+          href="https://github.com/craftslogic/accounting-system/releases/download/finora/application-8288a11f-a7aa-428f-949b-bc6dbb139830.apk"
           download="Finora.apk"
           className="flex items-center gap-3 px-3 py-2.5 mb-2 w-full rounded-xl text-sm font-medium transition-all duration-200 bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
         >
