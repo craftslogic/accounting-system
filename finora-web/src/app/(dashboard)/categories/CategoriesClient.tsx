@@ -18,6 +18,67 @@ interface CategoriesClientProps {
   categories: Category[]
 }
 
+interface CategoryGroupProps {
+  title: string
+  cats: Category[]
+  type: 'income' | 'expense'
+  onEdit: (cat: Category) => void
+  onDelete: (id: string) => void
+}
+
+const CategoryGroup = ({ title, cats, type, onEdit, onDelete }: CategoryGroupProps) => (
+  <div>
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`w-2.5 h-2.5 rounded-full ${type === 'income' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{title}</h2>
+      <span className="text-xs text-muted-foreground">({cats.length})</span>
+    </div>
+    {cats.length === 0 ? (
+      <p className="text-sm text-muted-foreground italic pl-4">No {type} categories yet</p>
+    ) : (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {cats.map((cat) => (
+          <div
+            key={cat.id}
+            className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-white/10 bg-card hover:bg-accent/50 transition-colors gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex shrink-0 items-center justify-center text-xl"
+                style={{ backgroundColor: `${cat.color}20`, border: `1px solid ${cat.color}40` }}
+              >
+                {cat.icon}
+              </div>
+              <div className="truncate">
+                <p className="text-sm font-medium truncate">{cat.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{cat.type}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end sm:opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground"
+                onClick={() => onEdit(cat)}
+              >
+                <Edit className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground hover:text-red-400"
+                onClick={() => onDelete(cat.id)}
+              >
+                <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)
+
 export function CategoriesClient({ categories }: CategoriesClientProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [editCat, setEditCat] = useState<Category | null>(null)
@@ -35,58 +96,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
     }
   }
 
-  const CategoryGroup = ({ title, cats, type }: { title: string; cats: Category[]; type: 'income' | 'expense' }) => (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`w-2.5 h-2.5 rounded-full ${type === 'income' ? 'bg-emerald-400' : 'bg-red-400'}`} />
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{title}</h2>
-        <span className="text-xs text-muted-foreground">({cats.length})</span>
-      </div>
-      {cats.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic pl-4">No {type} categories yet</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {cats.map((cat) => (
-            <div
-              key={cat.id}
-              className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-white/10 bg-card hover:bg-accent/50 transition-colors gap-3"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex shrink-0 items-center justify-center text-xl"
-                  style={{ backgroundColor: `${cat.color}20`, border: `1px solid ${cat.color}40` }}
-                >
-                  {cat.icon}
-                </div>
-                <div className="truncate">
-                  <p className="text-sm font-medium truncate">{cat.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{cat.type}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground"
-                  onClick={() => setEditCat(cat)}
-                >
-                  <Edit className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground hover:text-red-400"
-                  onClick={() => handleDelete(cat.id)}
-                >
-                  <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  // CategoryGroup moved outside
 
   return (
     <div className="p-4 md:p-6 space-y-6 md:space-y-8 animate-fade-in">
@@ -107,8 +117,8 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
         </Button>
       </div>
 
-      <CategoryGroup title="Income" cats={income} type="income" />
-      <CategoryGroup title="Expense" cats={expense} type="expense" />
+      <CategoryGroup title="Income" cats={income} type="income" onEdit={setEditCat} onDelete={handleDelete} />
+      <CategoryGroup title="Expense" cats={expense} type="expense" onEdit={setEditCat} onDelete={handleDelete} />
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

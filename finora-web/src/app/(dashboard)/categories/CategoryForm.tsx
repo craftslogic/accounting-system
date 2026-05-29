@@ -32,24 +32,35 @@ export function CategoryForm({ initialData, onSuccess }: CategoryFormProps) {
     initialData?.icon ?? CATEGORY_ICONS[0]
   )
 
-  const action = initialData
-    ? updateCategoryAction.bind(null, initialData.id)
-    : createCategoryAction
+  const [state, setState] = useState<ActionResult<Category>>(initialState)
+  const [pending, setPending] = useState(false)
 
-  const [state, formAction, pending] = useActionState(
-    action as (prevState: ActionResult<Category>, formData: FormData) => Promise<ActionResult<Category>>,
-    initialState
-  )
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setPending(true)
+    const formData = new FormData(e.currentTarget)
+    try {
+      let res;
+      if (initialData) {
+        res = await updateCategoryAction(initialData.id, state, formData)
+      } else {
+        res = await createCategoryAction(state, formData)
+      }
+      setState(res)
+    } finally {
+      setPending(false)
+    }
+  }
 
   useEffect(() => {
     if (state?.success) {
       toast({ title: initialData ? 'Category updated' : 'Category created', variant: 'success' as never })
       onSuccess?.()
     }
-  }, [state?.success])
+  }, [state?.success, initialData, onSuccess, toast])
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {state && !state.success && state.error && (
         <div className="flex items-center gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">
           <AlertCircle className="w-4 h-4 shrink-0" />
