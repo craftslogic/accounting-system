@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
-import { createPeopleBalanceAction } from '@/actions/people'
+import { createPeopleBalanceAction, updatePeopleBalanceAction } from '@/actions/people'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,23 +20,31 @@ import type { ContactWithBalance, PeopleBalance, BalanceType, ActionResult } fro
 
 interface BalanceFormProps {
   contacts: ContactWithBalance[]
+  initialData?: PeopleBalance
   onSuccess?: () => void
 }
 
 const initialState: ActionResult<PeopleBalance> = { success: false, error: '' }
 
-export function BalanceForm({ contacts, onSuccess }: BalanceFormProps) {
-  const [type, setType] = useState<BalanceType | 'opening_payable' | 'opening_receivable'>('payable')
-  const [isOpening, setIsOpening] = useState(false)
+export function BalanceForm({ contacts, initialData, onSuccess }: BalanceFormProps) {
+  const [type, setType] = useState<BalanceType | 'opening_payable' | 'opening_receivable'>(
+    initialData?.type ?? 'payable'
+  )
+  const isOpeningInit = initialData?.type === 'opening_payable' || initialData?.type === 'opening_receivable'
+  const [isOpening, setIsOpening] = useState(isOpeningInit)
+
+  const action = initialData
+    ? updatePeopleBalanceAction.bind(null, initialData.id)
+    : createPeopleBalanceAction
 
   const [state, formAction, pending] = useActionState(
-    createPeopleBalanceAction as (prevState: ActionResult<PeopleBalance>, formData: FormData) => Promise<ActionResult<PeopleBalance>>,
+    action as (prevState: ActionResult<PeopleBalance>, formData: FormData) => Promise<ActionResult<PeopleBalance>>,
     initialState
   )
 
   useEffect(() => {
     if (state?.success) {
-      toast({ title: 'Balance recorded successfully', variant: 'success' as never })
+      toast({ title: initialData ? 'Balance updated successfully' : 'Balance recorded successfully', variant: 'success' as never })
       onSuccess?.()
     }
   }, [state?.success])
@@ -78,7 +86,7 @@ export function BalanceForm({ contacts, onSuccess }: BalanceFormProps) {
             </button>
           ))}
         </div>
-        <input type="hidden" name="type" value={isOpening ? `opening_${type}` : type} />
+        <input type="hidden" name="type" value={isOpening ? `opening_${type.replace('opening_', '')}` : type.replace('opening_', '')} />
       </div>
 
       <div className="space-y-2">
@@ -103,7 +111,7 @@ export function BalanceForm({ contacts, onSuccess }: BalanceFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="contact_id">Select Person</Label>
-        <Select name="contact_id" required>
+        <Select name="contact_id" defaultValue={initialData?.contact_id} required>
           <SelectTrigger id="contact_id">
             <SelectValue placeholder="Select who this is for" />
           </SelectTrigger>
@@ -122,21 +130,21 @@ export function BalanceForm({ contacts, onSuccess }: BalanceFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="amount">Amount</Label>
-        <Input id="amount" name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" required />
+        <Input id="amount" name="amount" type="number" step="0.01" min="0.01" defaultValue={initialData?.amount} placeholder="0.00" required />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="transaction_date">Date</Label>
-        <Input id="transaction_date" name="transaction_date" type="date" defaultValue={today()} required />
+        <Input id="transaction_date" name="transaction_date" type="date" defaultValue={initialData ? String(initialData.transaction_date).split('T')[0] : today()} required />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="note">Note (Optional)</Label>
-        <Textarea id="note" name="note" placeholder="E.g. Dinner split, loan for rent..." />
+        <Textarea id="note" name="note" defaultValue={initialData?.note ?? ''} placeholder="E.g. Dinner split, loan for rent..." />
       </div>
 
       <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={pending}>
-        {pending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Recording...</> : 'Record Balance'}
+        {pending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : initialData ? 'Update Balance' : 'Record Balance'}
       </Button>
     </form>
   )

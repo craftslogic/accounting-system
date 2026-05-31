@@ -138,16 +138,7 @@ export default function AddAccountScreen() {
             Enter the amount already available before you started using Finora.
           </Text>
 
-          {/* Currency */}
-          <Text style={[styles.label, { color: colors.textSecondary, marginTop: 24 }]}>CURRENCY</Text>
-          <Input
-            value={currency}
-            onChangeText={setCurrency}
-            placeholder="e.g. PKR"
-            leftIcon="cash-outline"
-            maxLength={3}
-            autoCapitalize="characters"
-          />
+
 
           {/* Save Button */}
           <Button

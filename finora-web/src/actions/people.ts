@@ -133,6 +133,40 @@ export async function deletePeopleBalanceAction(id: string): Promise<ActionResul
   }
 }
 
+export async function updatePeopleBalanceAction(
+  id: string,
+  _prevState: ActionResult<PeopleBalance>,
+  formData: FormData
+): Promise<ActionResult<PeopleBalance>> {
+  const result = BalanceSchema.safeParse({
+    contact_id: formData.get('contact_id'),
+    type: formData.get('type'),
+    amount: formData.get('amount'),
+    note: formData.get('note'),
+    transaction_date: formData.get('transaction_date'),
+  })
+
+  if (!result.success) return { success: false, error: result.error.message }
+
+  try {
+    const { supabase, user } = await getCurrentUser()
+    const { data, error } = await supabase
+      .from('people_balances')
+      .update(result.data)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/people')
+    revalidatePath('/dashboard')
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
 export async function clearContactBalanceAction(contactId: string, customAmount?: number): Promise<ActionResult> {
   try {
     const { supabase, user } = await getCurrentUser()

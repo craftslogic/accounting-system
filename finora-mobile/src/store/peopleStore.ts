@@ -14,6 +14,8 @@ interface PeopleState {
   addContact: (name: string, type: Contact['type']) => Promise<{ success: boolean; error?: string }>;
   addBalance: (contactId: string, type: 'payable' | 'receivable', amount: number, note: string) => Promise<{ success: boolean; error?: string }>;
   clearBalances: (contactId: string) => Promise<{ success: boolean; error?: string }>;
+  deleteBalance: (id: string) => Promise<{ success: boolean; error?: string }>;
+  updateBalance: (id: string, updates: any) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const usePeopleStore = create<PeopleState>((set, get) => ({
@@ -113,6 +115,44 @@ export const usePeopleStore = create<PeopleState>((set, get) => ({
     
     set(state => ({
       balances: state.balances.filter(b => b.contact_id !== contactId)
+    }));
+    return { success: true };
+  },
+
+  deleteBalance: async (id: string) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return { success: false, error: 'Not authenticated' };
+    
+    const { error } = await supabase
+      .from('people_balances')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+      
+    if (error) return { success: false, error: error.message };
+    
+    set(state => ({
+      balances: state.balances.filter(b => b.id !== id)
+    }));
+    return { success: true };
+  },
+
+  updateBalance: async (id: string, updates: any) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return { success: false, error: 'Not authenticated' };
+    
+    const { error, data } = await supabase
+      .from('people_balances')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select('*, contact:contacts(*)')
+      .single();
+      
+    if (error) return { success: false, error: error.message };
+    
+    set(state => ({
+      balances: state.balances.map(b => b.id === id ? data as PeopleBalanceWithContact : b)
     }));
     return { success: true };
   }

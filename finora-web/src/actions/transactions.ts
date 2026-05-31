@@ -72,7 +72,7 @@ export async function createTransactionAction(
       let balance = 0
       for (const tx of txs ?? []) {
         const amt = parseFloat(String(tx.amount))
-        if (tx.type === 'income' && tx.to_account_id === fromAccountId) balance += amt
+        if ((tx.type === 'income' || tx.type === 'opening_balance') && tx.to_account_id === fromAccountId) balance += amt
         else if (tx.type === 'expense' && tx.from_account_id === fromAccountId) balance -= amt
         else if (tx.type === 'transfer') {
           if (tx.from_account_id === fromAccountId) balance -= amt

@@ -67,9 +67,10 @@ export async function createFundAction(
 
   try {
     const { supabase, user } = await getCurrentUser()
+    const { initial_balance, ...fundData } = result.data
     const { data, error } = await supabase
       .from('funds')
-      .insert({ ...result.data, user_id: user.id })
+      .insert({ ...fundData, user_id: user.id })
       .select()
       .single()
 

@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Users, ArrowDownRight, ArrowUpRight, Search, ArrowLeftRight, CheckCircle2 } from 'lucide-react'
+import { Plus, Users, ArrowDownRight, ArrowUpRight, Search, ArrowLeftRight, CheckCircle2, Edit } from 'lucide-react'
 import { formatCurrency } from '@/utils/currency'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
-import { clearContactBalanceAction } from '@/actions/people'
+import { clearContactBalanceAction, deletePeopleBalanceAction } from '@/actions/people'
+import { Trash2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import {
 import { format } from 'date-fns'
 import { ContactForm } from '@/components/people/ContactForm'
 import { BalanceForm } from '@/components/people/BalanceForm'
-import type { ContactWithBalance, PeopleBalanceWithContact } from '@/types'
+import type { ContactWithBalance, PeopleBalance, PeopleBalanceWithContact } from '@/types'
 
 interface PeopleClientProps {
   contacts: ContactWithBalance[]
@@ -34,6 +35,7 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
   const [settlingContact, setSettlingContact] = useState<ContactWithBalance | null>(null)
   const [settleAmount, setSettleAmount] = useState('')
   const [isClearing, setIsClearing] = useState<string | null>(null)
+  const [editingBalance, setEditingBalance] = useState<PeopleBalance | null>(null)
 
   const handleSettle = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,6 +78,19 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
         description: result.error || 'Failed to settle balance',
         variant: 'destructive',
       })
+    }
+    setIsClearing(null)
+  }
+
+  const handleDeleteTransaction = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this record? This cannot be undone.')) return
+    
+    setIsClearing(id)
+    const result = await deletePeopleBalanceAction(id)
+    if (result.success) {
+      toast({ title: 'Record deleted', variant: 'success' })
+    } else {
+      toast({ title: 'Error', description: result.error, variant: 'destructive' })
     }
     setIsClearing(null)
   }
@@ -268,6 +283,7 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Note</th>
                   <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-center w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -298,6 +314,30 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
                         t.type === 'receivable' ? 'text-emerald-400' : 'text-orange-400'
                       }`}>
                         {formatCurrency(t.amount)}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingBalance(t)}
+                            disabled={isClearing === t.id}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            title="Edit Record"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteTransaction(t.id)}
+                            disabled={isClearing === t.id}
+                            className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -394,6 +434,22 @@ export function PeopleClient({ contacts, transactions }: PeopleClientProps) {
                 </Button>
               </div>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Balance Dialog */}
+      <Dialog open={!!editingBalance} onOpenChange={(open) => !open && setEditingBalance(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Record</DialogTitle>
+          </DialogHeader>
+          {editingBalance && (
+            <BalanceForm 
+              contacts={contacts} 
+              initialData={editingBalance} 
+              onSuccess={() => setEditingBalance(null)} 
+            />
           )}
         </DialogContent>
       </Dialog>

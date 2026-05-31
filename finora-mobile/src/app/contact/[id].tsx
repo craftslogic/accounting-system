@@ -25,6 +25,8 @@ export default function ContactDetailScreen() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   if (!contact) {
     return (
@@ -52,10 +54,18 @@ export default function ContactDetailScreen() {
   const isPositive = netBalance > 0;
   const balColor = isNeutral ? colors.textMuted : (isPositive ? COLORS.success : COLORS.danger);
 
-  const openModal = (t: 'payable' | 'receivable') => {
-    setType(t);
-    setAmount('');
-    setNote('');
+  const openModal = (t: 'payable' | 'receivable', record?: any) => {
+    if (record) {
+      setEditingId(record.id);
+      setType(record.type);
+      setAmount(String(record.amount));
+      setNote(record.note || '');
+    } else {
+      setEditingId(null);
+      setType(t);
+      setAmount('');
+      setNote('');
+    }
     setShowModal(true);
   };
 
@@ -66,10 +76,15 @@ export default function ContactDetailScreen() {
       return;
     }
     setIsSaving(true);
-    const res = await addBalance(contact.id, type, amt, note.trim());
+    let res;
+    if (editingId) {
+      res = await usePeopleStore.getState().updateBalance(editingId, { amount: amt, note: note.trim() || null });
+    } else {
+      res = await addBalance(contact.id, type, amt, note.trim());
+    }
     setIsSaving(false);
     if (res.success) setShowModal(false);
-    else Alert.alert('Error', res.error ?? 'Failed to add record.');
+    else Alert.alert('Error', res.error ?? 'Failed to save record.');
   };
 
   const handleClear = () => {
@@ -85,6 +100,26 @@ export default function ContactDetailScreen() {
           onPress: async () => {
             const res = await clearBalances(contact.id);
             if (!res.success) Alert.alert('Error', res.error ?? 'Failed to clear balances.');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteRecord = (recordId: string) => {
+    Alert.alert(
+      'Delete Record',
+      'Are you sure you want to delete this record? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(recordId);
+            const res = await usePeopleStore.getState().deleteBalance(recordId);
+            setIsDeleting(null);
+            if (!res.success) Alert.alert('Error', res.error ?? 'Failed to delete record.');
           }
         }
       ]
@@ -145,16 +180,24 @@ export default function ContactDetailScreen() {
               return (
                 <View key={b.id}>
                   {i > 0 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
-                  <View style={styles.historyRow}>
+                  <View style={[styles.historyRow, { opacity: isDeleting === b.id ? 0.5 : 1 }]}>
                     <View style={styles.histInfo}>
                       <Text style={[styles.histType, { color: colors.text }]}>{isRec ? 'Lent' : 'Borrowed'}</Text>
                       <Text style={[styles.histDate, { color: colors.textMuted }]}>
                         {new Date(b.transaction_date).toLocaleDateString()} {b.note ? `· ${b.note}` : ''}
                       </Text>
                     </View>
-                    <Text style={[styles.histAmt, { color: isRec ? COLORS.success : COLORS.danger }]}>
-                      {isRec ? '+' : '-'}{formatCurrency(b.amount)}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Text style={[styles.histAmt, { color: isRec ? COLORS.success : COLORS.danger }]}>
+                        {isRec ? '+' : '-'}{formatCurrency(b.amount)}
+                      </Text>
+                      <TouchableOpacity onPress={() => openModal('payable', b)} style={{ padding: 4 }}>
+                        <Ionicons name="pencil-outline" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteRecord(b.id)} style={{ padding: 4 }}>
+                        <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               );
@@ -169,7 +212,7 @@ export default function ContactDetailScreen() {
           <View style={[styles.sheet, { backgroundColor: isDark ? COLORS.dark.bgCard : '#FFF' }]}>
             <View style={styles.sheetHandle} />
             <Text style={[styles.sheetTitle, { color: colors.text }]}>
-              {type === 'payable' ? 'Record Borrowed Money' : 'Record Lent Money'}
+              {editingId ? 'Edit Record' : (type === 'payable' ? 'Record Borrowed Money' : 'Record Lent Money')}
             </Text>
 
             <Text style={[styles.label, { color: colors.textSecondary }]}>AMOUNT</Text>
