@@ -55,7 +55,8 @@ export default async function PeoplePage() {
     let total_payable = 0
     let total_receivable = 0
     for (const b of rows) {
-      const amt = parseFloat(String(b.amount))
+      const amt = typeof b.amount === 'string' ? parseFloat(b.amount) : (b.amount || 0)
+      if (isNaN(amt)) continue;
       if (b.type === 'payable' || b.type === 'opening_payable') total_payable += amt
       else if (b.type === 'receivable' || b.type === 'opening_receivable') total_receivable += amt
     }

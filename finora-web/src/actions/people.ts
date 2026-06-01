@@ -157,11 +157,14 @@ export async function createOpeningEntryAction(
   _prevState: ActionResult<PeopleBalance>,
   formData: FormData
 ): Promise<ActionResult<PeopleBalance>> {
+  const accountIdRaw = formData.get('account_id')
+  const accountId = accountIdRaw === 'none' || accountIdRaw === '' ? null : accountIdRaw
+
   const result = OpeningEntrySchema.safeParse({
     contact_id: formData.get('contact_id'),
     entry_type: formData.get('entry_type'),
     amount: formData.get('amount'),
-    account_id: formData.get('account_id') || null,
+    account_id: accountId,
     note: formData.get('note'),
     transaction_date: formData.get('transaction_date'),
   })

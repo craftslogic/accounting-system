@@ -17,7 +17,9 @@ export function calculateOutstanding(
   let outstanding = 0
 
   for (const row of rows) {
-    const amt = typeof row.amount === 'string' ? parseFloat(row.amount) : row.amount
+    const amt = typeof row.amount === 'string' ? parseFloat(row.amount) : (row.amount || 0)
+    if (isNaN(amt)) continue;
+
     if (direction === 'payable') {
       if (row.type === 'opening_payable') outstanding += amt
       else if (row.type === 'payable' && row.subtype === 'borrow') outstanding += amt
@@ -33,5 +35,5 @@ export function calculateOutstanding(
     }
   }
 
-  return Math.max(0, outstanding)
+  return Math.max(0, outstanding) || 0
 }

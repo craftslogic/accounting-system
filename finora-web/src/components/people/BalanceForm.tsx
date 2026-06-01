@@ -92,7 +92,9 @@ export function BalanceForm({
   const [relationship, setRelationship] = useState<RelationshipType>(
     initialData?.type === 'opening_payable' || initialData?.type === 'payable' ? 'payable' : 'receivable'
   )
-  const [mode, setMode] = useState<RecordingMode>('existing')
+  const [mode, setMode] = useState<RecordingMode>(
+    initialData && initialData.type !== 'opening_payable' && initialData.type !== 'opening_receivable' ? 'new' : 'existing'
+  )
   const [subtype, setSubtype] = useState<NewTxSubtype>(preSelectedSubtype ?? 'borrow')
 
   // ── Form fields ───────────────────────────────────────────────────────────
@@ -550,7 +552,7 @@ export function BalanceForm({
                 </SelectTrigger>
                 <SelectContent onPointerDownOutside={(e) => e.stopPropagation()}>
                   {!isExisting ? null : (
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                   )}
                   {accounts.map((a) => (
                     <SelectItem key={a.id} value={a.id}>

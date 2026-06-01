@@ -62,7 +62,8 @@ async function getPeopleData(supabase: ReturnType<typeof createClient> extends P
   let totalReceivable = 0
 
   for (const bal of data ?? []) {
-    const amount = parseFloat(String(bal.amount))
+    const amount = typeof bal.amount === 'string' ? parseFloat(bal.amount) : (bal.amount || 0)
+    if (isNaN(amount)) continue;
     if (bal.type === 'payable' || bal.type === 'opening_payable') totalPayable += amount
     else if (bal.type === 'receivable' || bal.type === 'opening_receivable') totalReceivable += amount
   }

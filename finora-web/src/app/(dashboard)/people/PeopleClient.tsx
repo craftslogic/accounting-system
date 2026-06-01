@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { ContactForm } from '@/components/people/ContactForm'
@@ -168,7 +169,10 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Add Person</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Add Person</DialogTitle>
+                <DialogDescription className="sr-only">Add a new person to your contacts</DialogDescription>
+              </DialogHeader>
               <ContactForm onSuccess={() => setContactDialogOpen(false)} />
             </DialogContent>
           </Dialog>
@@ -181,7 +185,10 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Record People Balance</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Record People Balance</DialogTitle>
+                <DialogDescription className="sr-only">Record a new balance or transaction</DialogDescription>
+              </DialogHeader>
               <BalanceForm
                 contacts={contacts}
                 accounts={accounts}
@@ -358,6 +365,7 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
                                       <DialogTitle>
                                         Record Payment to {c.name}
                                       </DialogTitle>
+                                      <DialogDescription className="sr-only">Record a payment made to this person</DialogDescription>
                                     </DialogHeader>
                                     <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 mb-4">
                                       <p className="text-sm text-orange-400">
@@ -402,6 +410,7 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
                                       <DialogTitle>
                                         Collect Payment from {c.name}
                                       </DialogTitle>
+                                      <DialogDescription className="sr-only">Collect a payment from this person</DialogDescription>
                                     </DialogHeader>
                                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
                                       <p className="text-sm text-emerald-400">
@@ -476,7 +485,13 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
                     return (
                       <tr key={t.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap text-muted-foreground">
-                          {format(new Date(t.transaction_date), 'MMM dd, yyyy')}
+                          {(() => {
+                            try {
+                              return t.transaction_date ? format(new Date(t.transaction_date), 'MMM dd, yyyy') : '—'
+                            } catch (e) {
+                              return '—'
+                            }
+                          })()}
                         </td>
                         <td className="px-4 py-4 font-medium">{t.contact?.name}</td>
                         <td className="px-4 py-4">
@@ -532,6 +547,7 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
               <AlertTriangle className="w-5 h-5 text-yellow-500" />
               Write Off / Forgive Debt
             </DialogTitle>
+            <DialogDescription className="sr-only">Write off or forgive a debt balance</DialogDescription>
           </DialogHeader>
           {selectedContact && (
             <div className="space-y-4 pt-2">
@@ -611,7 +627,10 @@ export function PeopleClient({ contacts, transactions, accounts }: PeopleClientP
       {/* ── Edit Balance Dialog ── */}
       <Dialog open={!!editingBalance} onOpenChange={(open) => !open && setEditingBalance(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Edit Record</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit Record</DialogTitle>
+            <DialogDescription className="sr-only">Edit an existing transaction or balance</DialogDescription>
+          </DialogHeader>
           {editingBalance && (
             <BalanceForm
               contacts={contacts}
