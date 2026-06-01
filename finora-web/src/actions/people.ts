@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult, Contact, PeopleBalance, PeopleSubtype } from '@/types'
+import { calculateOutstanding } from '@/utils/people'
 
 // ============================================================
 // Schemas
@@ -504,34 +505,6 @@ async function getOutstandingBalance(
   return calculateOutstanding(rows ?? [], direction)
 }
 
-/**
- * Pure calculation: given an array of balance rows, compute outstanding for a direction.
- */
-export function calculateOutstanding(
-  rows: { type: string; subtype: string | null; amount: number }[],
-  direction: 'payable' | 'receivable'
-): number {
-  let outstanding = 0
-
-  for (const row of rows) {
-    const amt = typeof row.amount === 'string' ? parseFloat(row.amount) : row.amount
-    if (direction === 'payable') {
-      if (row.type === 'opening_payable') outstanding += amt
-      else if (row.type === 'payable' && row.subtype === 'borrow') outstanding += amt
-      else if (row.type === 'payable' && row.subtype === 'repay') outstanding -= amt
-      else if (row.type === 'payable' && row.subtype === 'writeoff') outstanding -= amt
-      else if (row.type === 'payable' && row.subtype === 'adjustment') outstanding += amt
-    } else {
-      if (row.type === 'opening_receivable') outstanding += amt
-      else if (row.type === 'receivable' && row.subtype === 'lend') outstanding += amt
-      else if (row.type === 'receivable' && row.subtype === 'collect') outstanding -= amt
-      else if (row.type === 'receivable' && row.subtype === 'writeoff') outstanding -= amt
-      else if (row.type === 'receivable' && row.subtype === 'adjustment') outstanding += amt
-    }
-  }
-
-  return Math.max(0, outstanding)
-}
 
 /**
  * Legacy action kept for backwards compatibility.
@@ -589,5 +562,3 @@ export async function clearContactBalanceAction(contactId: string, customAmount?
   }
 }
 
-// Keep old createPeopleBalanceAction as alias for backwards compat (opening entries)
-export { createOpeningEntryAction as createPeopleBalanceAction }

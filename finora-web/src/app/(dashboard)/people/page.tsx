@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { PeopleClient } from './PeopleClient'
-import { calculateOutstanding } from '@/actions/people'
+import { calculateOutstanding } from '@/utils/people'
 import type { ContactWithBalance, PeopleBalanceWithContact } from '@/types'
 import type { Metadata } from 'next'
 
