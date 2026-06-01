@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { PeopleClient } from './PeopleClient'
+import { calculateOutstanding } from '@/actions/people'
 import type { ContactWithBalance, PeopleBalanceWithContact } from '@/types'
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'People Balances' }
+export const metadata: Metadata = { title: 'People Balances — Finoraa' }
 
 export default async function PeoplePage() {
   const supabase = await createClient()
@@ -17,44 +18,66 @@ export default async function PeoplePage() {
     .eq('user_id', user.id)
     .order('name', { ascending: true })
 
-  // Fetch balances
+  // Fetch all people balance rows (opening entries + live transactions)
   const { data: balancesData } = await supabase
     .from('people_balances')
     .select('*, contact:contacts(*)')
     .eq('user_id', user.id)
     .order('transaction_date', { ascending: false })
 
-  const contacts = contactsData as ContactWithBalance[] | null ?? []
-  const balances = balancesData as PeopleBalanceWithContact[] | null ?? []
+  // Fetch accounts for the "which account" step in the form
+  const { data: accountsData } = await supabase
+    .from('accounts')
+    .select('id, name, type')
+    .eq('user_id', user.id)
+    .eq('is_archived', false)
+    .order('name', { ascending: true })
 
-  // Combine logic
-  const contactMap: Record<string, ContactWithBalance> = {}
-  for (const c of contacts) {
-    contactMap[c.id] = { ...c, balance: 0, total_payable: 0, total_receivable: 0 }
-  }
+  const contacts = contactsData ?? []
+  const balances = (balancesData ?? []) as PeopleBalanceWithContact[]
+  const accounts = accountsData ?? []
 
+  // Group balance rows by contact
+  const balancesByContact: Record<string, typeof balances> = {}
   for (const b of balances) {
-    const cid = b.contact_id
-    if (contactMap[cid]) {
-      const amount = parseFloat(String(b.amount))
-      if (b.type === 'payable' || b.type === 'opening_payable') {
-        contactMap[cid].total_payable += amount
-      } else if (b.type === 'receivable' || b.type === 'opening_receivable') {
-        contactMap[cid].total_receivable += amount
-      }
-    }
+    if (!balancesByContact[b.contact_id]) balancesByContact[b.contact_id] = []
+    balancesByContact[b.contact_id].push(b)
   }
 
-  for (const cid in contactMap) {
-    const c = contactMap[cid]
-    // balance is what THEY owe me (receivable) minus what I owe THEM (payable)
-    c.balance = c.total_receivable - c.total_payable
-  }
+  // Compute per-contact outstanding using the proper formula
+  const contactsWithBalance: ContactWithBalance[] = contacts.map((c) => {
+    const rows = balancesByContact[c.id] ?? []
+
+    const outstanding_payable = calculateOutstanding(rows, 'payable')
+    const outstanding_receivable = calculateOutstanding(rows, 'receivable')
+
+    // total_payable / total_receivable = gross (for display)
+    let total_payable = 0
+    let total_receivable = 0
+    for (const b of rows) {
+      const amt = parseFloat(String(b.amount))
+      if (b.type === 'payable' || b.type === 'opening_payable') total_payable += amt
+      else if (b.type === 'receivable' || b.type === 'opening_receivable') total_receivable += amt
+    }
+
+    // net balance: positive = they owe me, negative = I owe them
+    const balance = outstanding_receivable - outstanding_payable
+
+    return {
+      ...c,
+      balance,
+      total_payable,
+      total_receivable,
+      outstanding_payable,
+      outstanding_receivable,
+    }
+  })
 
   return (
-    <PeopleClient 
-      contacts={Object.values(contactMap)} 
-      transactions={balances} 
+    <PeopleClient
+      contacts={contactsWithBalance}
+      transactions={balances}
+      accounts={accounts}
     />
   )
 }

@@ -110,16 +110,20 @@ export interface Contact {
   id: string;
   user_id: string;
   name: string;
-  type: 'borrower' | 'lender' | 'both';
+  type: 'friend' | 'family' | 'client' | 'custom';
   created_at?: string;
 }
+
+export type PeopleSubtype = 'borrow' | 'lend' | 'repay' | 'collect' | 'adjustment' | 'writeoff';
 
 export interface PeopleBalance {
   id: string;
   user_id: string;
   contact_id: string;
   type: 'payable' | 'receivable' | 'opening_payable' | 'opening_receivable';
+  subtype: PeopleSubtype | null;
   amount: number;
+  account_id: string | null;
   note?: string;
   transaction_date: string;
   created_at?: string;

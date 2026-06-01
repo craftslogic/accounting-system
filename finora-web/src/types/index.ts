@@ -55,6 +55,9 @@ export interface TransactionWithDetails extends Transaction {
 // ---- People Balances ----
 export type ContactType = 'friend' | 'family' | 'client' | 'custom'
 export type BalanceType = 'payable' | 'receivable' | 'opening_payable' | 'opening_receivable'
+// Subtypes: used to distinguish borrow/lend/repay/collect/adjustment/writeoff
+// opening_payable / opening_receivable have no subtype
+export type PeopleSubtype = 'borrow' | 'lend' | 'repay' | 'collect' | 'adjustment' | 'writeoff'
 
 export interface Contact {
   id: string
@@ -68,6 +71,10 @@ export interface ContactWithBalance extends Contact {
   balance: number
   total_payable: number
   total_receivable: number
+  // Outstanding = opening + borrowed - repaid
+  outstanding_payable: number
+  // Outstanding = opening + lent - collected
+  outstanding_receivable: number
 }
 
 export interface PeopleBalance {
@@ -75,7 +82,9 @@ export interface PeopleBalance {
   user_id: string
   contact_id: string
   type: BalanceType
+  subtype: PeopleSubtype | null
   amount: number
+  account_id: string | null
   note: string | null
   transaction_date: string
   created_at: string

@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import { COLORS } from '@/constants/colors';
-import { usePeopleStore } from '@/store/peopleStore';
+import { usePeopleStore, calculateOutstanding } from '@/store/peopleStore';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 
 function formatCurrency(n: number) {
@@ -28,7 +28,6 @@ export default function PeopleScreen() {
 
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
-  // 'custom' means user chose "Other"
   const [type, setType] = useState<string>('friend');
   const [isCustom, setIsCustom] = useState(false);
   const [customType, setCustomType] = useState('');
@@ -59,7 +58,7 @@ export default function PeopleScreen() {
     }
     const finalType = isCustom ? (customType.trim() || 'other') : type;
     setIsSaving(true);
-    const res = await addContact(name.trim(), finalType);
+    const res = await addContact(name.trim(), finalType as any);
     setIsSaving(false);
     if (res.success) {
       setShowModal(false);
@@ -68,35 +67,32 @@ export default function PeopleScreen() {
     }
   };
 
-  // Compute stats
-  const { totalPayable, totalReceivable, contactsWithBal } = useMemo(() => {
-    let tp = 0;
-    let tr = 0;
-    const cMap = new Map();
-
-    contacts.forEach(c => {
-      cMap.set(c.id, { ...c, total_payable: 0, total_receivable: 0, balance: 0 });
+  // Compute outstanding balances using the correct formula
+  const { totalOutstandingPayable, totalOutstandingReceivable, contactsWithBal } = useMemo(() => {
+    // Group balances by contact_id up-front
+    const byContact: Record<string, typeof balances> = {};
+    balances.forEach(b => {
+      if (!byContact[b.contact_id]) byContact[b.contact_id] = [];
+      byContact[b.contact_id].push(b);
     });
 
-    balances.forEach(b => {
-      const c = cMap.get(b.contact_id);
-      if (c) {
-        if (b.type === 'payable' || b.type === 'opening_payable') {
-          c.total_payable += b.amount;
-          c.balance -= b.amount;
-          tp += b.amount;
-        } else if (b.type === 'receivable' || b.type === 'opening_receivable') {
-          c.total_receivable += b.amount;
-          c.balance += b.amount;
-          tr += b.amount;
-        }
-      }
+    let tp = 0;
+    let tr = 0;
+
+    const withBal = contacts.map(c => {
+      const rows = byContact[c.id] ?? [];
+      const outstanding_payable = calculateOutstanding(rows, 'payable');
+      const outstanding_receivable = calculateOutstanding(rows, 'receivable');
+      const balance = outstanding_receivable - outstanding_payable;
+      tp += outstanding_payable;
+      tr += outstanding_receivable;
+      return { ...c, outstanding_payable, outstanding_receivable, balance };
     });
 
     return {
-      totalPayable: tp,
-      totalReceivable: tr,
-      contactsWithBal: Array.from(cMap.values()),
+      totalOutstandingPayable: tp,
+      totalOutstandingReceivable: tr,
+      contactsWithBal: withBal,
     };
   }, [contacts, balances]);
 
@@ -112,15 +108,16 @@ export default function PeopleScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Stats Banner — updated terminology */}
       <View style={[styles.statsBanner, { backgroundColor: isDark ? COLORS.dark.bgCard : COLORS.primary }]}>
         <View style={styles.statsItem}>
-          <Text style={styles.statsLabel}>You Owe (Payable)</Text>
-          <Text style={[styles.statsValue, { color: '#EF4444' }]}>{formatCurrency(totalPayable)}</Text>
+          <Text style={styles.statsLabel}>I Need to Pay</Text>
+          <Text style={[styles.statsValue, { color: '#EF4444' }]}>{formatCurrency(totalOutstandingPayable)}</Text>
         </View>
         <View style={styles.statsDivider} />
         <View style={styles.statsItem}>
-          <Text style={styles.statsLabel}>You are Owed (Receivable)</Text>
-          <Text style={[styles.statsValue, { color: '#10B981' }]}>{formatCurrency(totalReceivable)}</Text>
+          <Text style={styles.statsLabel}>They Need to Pay Me</Text>
+          <Text style={[styles.statsValue, { color: '#10B981' }]}>{formatCurrency(totalOutstandingReceivable)}</Text>
         </View>
       </View>
 
@@ -136,7 +133,7 @@ export default function PeopleScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No people added</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              Add contacts to track shared expenses, loans, and IOUs.
+              Add contacts to track money you owe or are owed.
             </Text>
             <TouchableOpacity onPress={openModal} style={[styles.emptyBtn, { backgroundColor: COLORS.primary }]}>
               <Text style={styles.emptyBtnText}>Add Person</Text>
@@ -144,9 +141,24 @@ export default function PeopleScreen() {
           </View>
         ) : (
           contactsWithBal.map(c => {
-            const isNeutral = c.balance === 0;
-            const isPositive = c.balance > 0;
-            const balColor = isNeutral ? colors.textMuted : (isPositive ? COLORS.success : COLORS.danger);
+            const isSettled = c.outstanding_payable === 0 && c.outstanding_receivable === 0;
+            const hasPayable = c.outstanding_payable > 0;
+            const hasReceivable = c.outstanding_receivable > 0;
+
+            let balLabel = 'Settled up';
+            let balColor: string = colors.textMuted;
+            if (!isSettled) {
+              if (hasPayable && hasReceivable) {
+                balLabel = `Net: ${c.balance < 0 ? '−' : '+'}${formatCurrency(Math.abs(c.balance))}`;
+                balColor = c.balance < 0 ? COLORS.danger : COLORS.success;
+              } else if (hasPayable) {
+                balLabel = `You owe ${formatCurrency(c.outstanding_payable)}`;
+                balColor = COLORS.danger;
+              } else {
+                balLabel = `Owes you ${formatCurrency(c.outstanding_receivable)}`;
+                balColor = COLORS.success;
+              }
+            }
 
             return (
               <TouchableOpacity
@@ -157,17 +169,19 @@ export default function PeopleScreen() {
               >
                 <View style={styles.cardLeft}>
                   <View style={[styles.avatar, { backgroundColor: `${COLORS.primary}15` }]}>
-                    <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 18 }}>{c.name.charAt(0).toUpperCase()}</Text>
+                    <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 18 }}>
+                      {c.name.charAt(0).toUpperCase()}
+                    </Text>
                   </View>
                   <View style={styles.cardInfo}>
                     <Text style={[styles.contactName, { color: colors.text }]}>{c.name}</Text>
-                    <Text style={[styles.contactType, { color: colors.textMuted }]}>{c.type.charAt(0).toUpperCase() + c.type.slice(1)}</Text>
+                    <Text style={[styles.contactType, { color: colors.textMuted }]}>
+                      {c.type.charAt(0).toUpperCase() + c.type.slice(1)}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.cardRight}>
-                  <Text style={[styles.balanceAmount, { color: balColor }]}>
-                    {isNeutral ? 'Settled up' : `${isPositive ? 'Owes you' : 'You owe'} ${formatCurrency(Math.abs(c.balance))}`}
-                  </Text>
+                  <Text style={[styles.balanceAmount, { color: balColor }]}>{balLabel}</Text>
                   <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginLeft: 6 }} />
                 </View>
               </TouchableOpacity>
@@ -179,7 +193,7 @@ export default function PeopleScreen() {
 
       {/* Add Contact Modal */}
       <Modal visible={showModal} transparent animationType="slide">
-        <KeyboardAvoidingView style={styles.overlay} behavior="padding">
+        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.sheet, { backgroundColor: isDark ? COLORS.dark.bgCard : '#FFF' }]}>
             <View style={styles.sheetHandle} />
             <Text style={[styles.sheetTitle, { color: colors.text }]}>Add Person</Text>
@@ -187,7 +201,7 @@ export default function PeopleScreen() {
             <Text style={[styles.label, { color: colors.textSecondary }]}>NAME</Text>
             <TextInput
               style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted }]}
-              placeholder="e.g. Alex"
+              placeholder="e.g. Ahmed"
               placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
@@ -209,10 +223,8 @@ export default function PeopleScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
-
-              {/* Other / Custom */}
               <TouchableOpacity
-                onPress={() => { setIsCustom(true); }}
+                onPress={() => setIsCustom(true)}
                 style={[styles.typeBtn, {
                   backgroundColor: isCustom ? `${COLORS.primary}18` : (isDark ? COLORS.dark.bgMuted : COLORS.light.bgMuted),
                   borderColor: isCustom ? COLORS.primary : 'transparent',
@@ -224,7 +236,6 @@ export default function PeopleScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Custom relationship input – shown only when "Other" is selected */}
             {isCustom && (
               <>
                 <Text style={[styles.label, { color: colors.textSecondary, marginTop: 8 }]}>CUSTOM RELATIONSHIP</Text>
@@ -261,7 +272,7 @@ const styles = StyleSheet.create({
   addBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   statsBanner: { flexDirection: 'row', marginHorizontal: 20, borderRadius: 16, padding: 16, marginBottom: 16 },
   statsItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statsLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.3 },
+  statsLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.3, textAlign: 'center' },
   statsValue: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
   statsDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 4 },
   scroll: { paddingHorizontal: 20 },
