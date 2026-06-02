@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const url = "https://github.com/craftslogic/accounting-system/releases/download/finora/application-5deee316-22da-493c-aeb0-21cf43c5a37c.apk"
+  const url = "https://github.com/craftslogic/accounting-system/releases/download/finora/application-927e71cb-685e-4be3-a7e0-76d7e70b7493.apk"
   
   try {
     const response = await fetch(url)
