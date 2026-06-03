@@ -90,10 +90,13 @@ export function BalanceForm({
   )
   const [contactId, setContactId] = useState(preSelectedContactId ?? initialData?.contact_id ?? '')
   const [relationship, setRelationship] = useState<RelationshipType>(
-    initialData?.type === 'opening_payable' || initialData?.type === 'payable' ? 'payable' : 'receivable'
+    preSelectedSubtype === 'borrow' || preSelectedSubtype === 'repay' ? 'payable'
+    : preSelectedSubtype === 'lend' || preSelectedSubtype === 'collect' ? 'receivable'
+    : initialData?.type === 'opening_payable' || initialData?.type === 'payable' ? 'payable' : 'receivable'
   )
   const [mode, setMode] = useState<RecordingMode>(
-    initialData && initialData.type !== 'opening_payable' && initialData.type !== 'opening_receivable' ? 'new' : 'existing'
+    preSelectedSubtype ? 'new'
+    : initialData && initialData.type !== 'opening_payable' && initialData.type !== 'opening_receivable' ? 'new' : 'existing'
   )
   const [subtype, setSubtype] = useState<NewTxSubtype>(preSelectedSubtype ?? 'borrow')
 
@@ -146,13 +149,16 @@ export function BalanceForm({
   const selectedContact = contacts.find((c) => c.id === contactId)
   const pending = openingPending || txPending || isSubmitting
 
-  // When relationship changes, auto-adjust subtype
+  // When relationship changes, auto-adjust subtype if it mismatches the relationship
   useEffect(() => {
     if (mode === 'new') {
-      if (relationship === 'payable') setSubtype('borrow')
-      else setSubtype('lend')
+      if (relationship === 'payable') {
+        if (subtype !== 'borrow' && subtype !== 'repay') setSubtype('borrow')
+      } else {
+        if (subtype !== 'lend' && subtype !== 'collect') setSubtype('lend')
+      }
     }
-  }, [relationship, mode])
+  }, [relationship, mode]) // we intentionally don't include subtype to avoid loops
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleOverpaymentConvert() {
