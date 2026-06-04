@@ -17,7 +17,7 @@ export default async function CategoriesPage() {
     .order('type')
     .order('name')
 
-  const cats = categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES
+  const cats = [...DEFAULT_CATEGORIES, ...(categories || [])]
 
   return <CategoriesClient categories={cats} />
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult, Category } from '@/types'
+import { DEFAULT_CATEGORIES } from '@/lib/constants'
 
 const CategorySchema = z.object({
   name: z.string().min(1, 'Category name is required').max(50),
@@ -119,7 +120,7 @@ export async function getCategories() {
   
   if (error) {
     console.error('Error fetching categories:', error)
-    return []
+    return DEFAULT_CATEGORIES
   }
-  return data
+  return [...DEFAULT_CATEGORIES, ...(data || [])]
 }

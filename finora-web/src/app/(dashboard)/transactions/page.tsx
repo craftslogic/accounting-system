@@ -39,7 +39,7 @@ export default async function TransactionsPage() {
     <TransactionsClient
       transactions={(transactionsRes.data ?? []) as never}
       accounts={accountsRes.data ?? []}
-      categories={categoriesRes.data && categoriesRes.data.length > 0 ? categoriesRes.data : DEFAULT_CATEGORIES}
+      categories={[...DEFAULT_CATEGORIES, ...(categoriesRes.data || [])]}
     />
   )
 }

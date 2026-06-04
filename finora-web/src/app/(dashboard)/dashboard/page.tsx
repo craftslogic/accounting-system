@@ -4,6 +4,7 @@ import { getCurrentMonthRange } from '@/utils/dates'
 import { AccountCard } from '@/components/accounts/AccountCard'
 import { TransactionRow } from '@/components/transactions/TransactionRow'
 import { FundsDashboardWidget } from '@/components/funds/FundsDashboardWidget'
+import { calculateOutstanding } from '@/utils/people'
 
 import { TrendingUp, TrendingDown, Users, PiggyBank, Plus, ArrowLeftRight, Wallet } from 'lucide-react'
 import Link from 'next/link'
@@ -55,23 +56,44 @@ async function getAccountBalances(supabase: ReturnType<typeof createClient> exte
 async function getPeopleData(supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never, userId: string) {
   const { data } = await supabase
     .from('people_balances')
-    .select('id, type, amount, contact:contacts(name)')
+    .select('id, type, subtype, amount, contact_id, contact:contacts(name)')
     .eq('user_id', userId)
+    .order('transaction_date', { ascending: false })
   
   let totalPayable = 0
   let totalReceivable = 0
 
+  const balancesByContact: Record<string, any[]> = {}
   for (const bal of data ?? []) {
-    const amount = typeof bal.amount === 'string' ? parseFloat(bal.amount) : (bal.amount || 0)
-    if (isNaN(amount)) continue;
-    if (bal.type === 'payable' || bal.type === 'opening_payable') totalPayable += amount
-    else if (bal.type === 'receivable' || bal.type === 'opening_receivable') totalReceivable += amount
+    if (!balancesByContact[bal.contact_id]) balancesByContact[bal.contact_id] = []
+    balancesByContact[bal.contact_id].push(bal)
+  }
+
+  const contactsWithBalances = []
+
+  for (const [contact_id, rows] of Object.entries(balancesByContact)) {
+    const payable = calculateOutstanding(rows, 'payable')
+    const receivable = calculateOutstanding(rows, 'receivable')
+    
+    totalPayable += payable
+    totalReceivable += receivable
+    
+    const net = receivable - payable
+    if (net !== 0) {
+      contactsWithBalances.push({
+        id: rows[0].id,
+        contact_id,
+        contact: rows[0].contact,
+        type: net < 0 ? 'payable' : 'receivable',
+        amount: Math.abs(net)
+      })
+    }
   }
 
   return { 
     totalPayable, 
     totalReceivable, 
-    balances: data?.slice(0, 3) || [] 
+    balances: contactsWithBalances.slice(0, 3) 
   }
 }
 
