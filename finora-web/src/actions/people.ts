@@ -258,7 +258,7 @@ export async function createPeopleTransactionAction(
     const balanceType = subtypeToBalanceType(subtype)
 
     // Step 1: Create the account transaction
-    let txType: 'income' | 'expense' | 'transfer'
+    let txType: 'income' | 'expense'
     let fromAccountId: string | null = null
     let toAccountId: string | null = null
 
@@ -268,10 +268,10 @@ export async function createPeopleTransactionAction(
     // collect: money comes IN → external transfer to account
     const isInflow = subtype === 'borrow' || subtype === 'collect'
     if (isInflow) {
-      txType = 'transfer'
+      txType = 'income'
       toAccountId = account_id
     } else {
-      txType = 'transfer'
+      txType = 'expense'
       fromAccountId = account_id
     }
 
@@ -346,7 +346,7 @@ export async function handleOverpaymentAction(
     // Account transaction for full repayment
     await supabase.from('transactions').insert({
       user_id: user.id,
-      type: 'transfer',
+      type: isInflow ? 'income' : 'expense',
       amount: totalAmount,
       from_account_id: isInflow ? null : accountId,
       to_account_id: isInflow ? accountId : null,

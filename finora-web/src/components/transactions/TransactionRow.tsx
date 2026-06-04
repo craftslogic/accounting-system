@@ -40,7 +40,7 @@ export function TransactionRow({ transaction, actions }: TransactionRowProps) {
 
   const accountLabel =
     transaction.type === 'transfer'
-      ? `${transaction.from_account?.name || 'External'} → ${transaction.to_account?.name || 'External'}`
+      ? `${transaction.from_account?.name} → ${transaction.to_account?.name}`
       : (transaction.type === 'income' || transaction.type === 'opening_balance')
       ? transaction.to_account?.name
       : transaction.from_account?.name

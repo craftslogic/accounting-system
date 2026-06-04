@@ -34,18 +34,47 @@ export async function getAnalyticsData(period: 'weekly' | 'monthly' | 'yearly') 
     console.error('Error fetching daily net worth:', dailyError)
   }
 
+  // 1.5 Get people transactions to subtract from income/expense
+  const { data: peopleData } = await supabase
+    .from('people_balances')
+    .select('subtype, amount, transaction_date')
+    .eq('user_id', user.id)
+    .in('subtype', ['borrow', 'lend', 'repay', 'collect'])
+    .gte('transaction_date', startStr)
+    .lte('transaction_date', endStr)
+
+  const peopleByDay: Record<string, { income: number; expense: number }> = {}
+  for (const pb of peopleData ?? []) {
+    const dayStr = pb.transaction_date.substring(0, 10)
+    if (!peopleByDay[dayStr]) peopleByDay[dayStr] = { income: 0, expense: 0 }
+    
+    const amount = parseFloat(String(pb.amount))
+    if (pb.subtype === 'borrow' || pb.subtype === 'collect') {
+      peopleByDay[dayStr].income += amount
+    } else if (pb.subtype === 'lend' || pb.subtype === 'repay') {
+      peopleByDay[dayStr].expense += amount
+    }
+  }
+
   // 2. Aggregate stats
   let totalIncome = 0
   let totalExpense = 0
 
   const trends = (dailyData ?? []).map((day: any) => {
-    totalIncome += Number(day.income)
-    totalExpense += Number(day.expense)
+    const dayStr = String(day.day).substring(0, 10)
+    const pData = peopleByDay[dayStr] ?? { income: 0, expense: 0 }
+    
+    const trueIncome = Number(day.income) - pData.income
+    const trueExpense = Number(day.expense) - pData.expense
+    
+    totalIncome += trueIncome
+    totalExpense += trueExpense
+    
     return {
       date: new Date(day.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      income: Number(day.income),
-      expense: Number(day.expense),
-      savings: Number(day.income) - Number(day.expense)
+      income: trueIncome,
+      expense: trueExpense,
+      savings: trueIncome - trueExpense
     }
   })
 

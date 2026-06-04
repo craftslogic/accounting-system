@@ -104,7 +104,7 @@ export default async function DashboardPage() {
 
   const { start, end } = getCurrentMonthRange()
 
-  const [accountsWithBalance, monthlyStatsRaw, recentTransactions, peopleData, fundsData, budgetsData] = await Promise.all([
+  const [accountsWithBalance, monthlyStatsRaw, recentTransactions, peopleData, fundsData, budgetsData, monthlyPeopleBalances] = await Promise.all([
     getAccountBalances(supabase, user.id),
 
     supabase
@@ -139,7 +139,15 @@ export default async function DashboardPage() {
       .from('budgets')
       .select('amount')
       .eq('user_id', user.id)
-      .eq('period', 'monthly')
+      .eq('period', 'monthly'),
+      
+    supabase
+      .from('people_balances')
+      .select('subtype, amount')
+      .eq('user_id', user.id)
+      .in('subtype', ['borrow', 'lend', 'repay', 'collect'])
+      .gte('transaction_date', start)
+      .lte('transaction_date', end)
   ])
 
   // Monthly stats
@@ -149,6 +157,16 @@ export default async function DashboardPage() {
     const amount = parseFloat(String(tx.amount))
     if (tx.type === 'income') monthlyIncome += amount
     else if (tx.type === 'expense') monthlyExpenses += amount
+  }
+
+  // Deduct people-related transactions so they don't skew real income/expense
+  for (const pb of monthlyPeopleBalances.data ?? []) {
+    const amount = parseFloat(String(pb.amount))
+    if (pb.subtype === 'borrow' || pb.subtype === 'collect') {
+      monthlyIncome -= amount
+    } else if (pb.subtype === 'lend' || pb.subtype === 'repay') {
+      monthlyExpenses -= amount
+    }
   }
   const netSavings = monthlyIncome - monthlyExpenses
 
