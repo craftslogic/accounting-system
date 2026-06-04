@@ -13,6 +13,11 @@ export function BudgetCard({ budget, accounts, categories }: { budget: any, acco
   const [isEditing, setIsEditing] = useState(false)
   const { toast } = useToast()
 
+  const spent = budget.spent || 0
+  const limit = budget.amount
+  const progressPct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0
+  const isOverBudget = spent > limit
+
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this budget limit?')) return
     
@@ -72,10 +77,15 @@ export function BudgetCard({ budget, accounts, categories }: { budget: any, acco
       <div className="space-y-2 mt-4">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Spent</span>
-          <span className="font-medium">Rs 0.00 (0%)</span>
+          <span className={`font-medium ${isOverBudget ? 'text-red-400' : ''}`}>
+            {formatCurrency(spent)} ({progressPct}%)
+          </span>
         </div>
         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-          <div className="h-full bg-blue-500 w-[0%]" />
+          <div 
+            className={`h-full ${isOverBudget ? 'bg-red-500' : 'bg-blue-500'} transition-all duration-500`} 
+            style={{ width: `${progressPct}%` }} 
+          />
         </div>
       </div>
 

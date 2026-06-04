@@ -23,9 +23,62 @@ export async function getBudgets() {
     return []
   }
 
-  // To calculate progress, we would ideally fetch transactions for the period.
-  // For now, we return the base budgets.
-  return data
+  if (!data || data.length === 0) return []
+
+  // 1. Determine period dates for each budget and find the earliest start date needed
+  let earliestDate = new Date()
+  const now = new Date()
+  
+  const budgetsWithSpent = data.map((b: any) => {
+    let start = new Date()
+    let end = new Date()
+
+    if (b.period === 'weekly') {
+      // Assuming week starts on Monday, or Sunday depending on locale, we'll do Sunday
+      const day = now.getDay()
+      start.setDate(now.getDate() - day)
+      start.setHours(0, 0, 0, 0)
+      end.setDate(start.getDate() + 6)
+      end.setHours(23, 59, 59, 999)
+    } else if (b.period === 'monthly') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1)
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    } else if (b.period === 'yearly') {
+      start = new Date(now.getFullYear(), 0, 1)
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+    }
+    
+    if (start < earliestDate) earliestDate = start
+    
+    return { ...b, _start: start, _end: end, spent: 0 }
+  })
+
+  // 2. Fetch all expense transactions from the earliest start date
+  const { data: txs } = await supabase
+    .from('transactions')
+    .select('amount, category_id, from_account_id, transaction_date')
+    .eq('user_id', user.id)
+    .eq('type', 'expense')
+    .gte('transaction_date', earliestDate.toISOString())
+
+  // 3. Accumulate spent amounts
+  for (const b of budgetsWithSpent) {
+    let spent = 0
+    for (const tx of txs || []) {
+      const txDate = new Date(tx.transaction_date)
+      if (txDate >= b._start && txDate <= b._end) {
+        const matchCategory = !b.category_id || tx.category_id === b.category_id
+        const matchAccount = !b.account_id || tx.from_account_id === b.account_id
+        if (matchCategory && matchAccount) {
+          spent += parseFloat(String(tx.amount))
+        }
+      }
+    }
+    b.spent = spent
+  }
+
+  // Remove temporary date fields
+  return budgetsWithSpent.map(({ _start, _end, ...b }) => b)
 }
 
 export async function createBudget(formData: FormData) {
