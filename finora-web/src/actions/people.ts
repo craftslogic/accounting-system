@@ -447,6 +447,19 @@ export async function updatePeopleBalanceAction(
 
   try {
     const { supabase, user } = await getCurrentUser()
+    
+    // Fetch old record first to find the linked transaction
+    const { data: oldRecord, error: fetchError } = await supabase
+      .from('people_balances')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (fetchError || !oldRecord) {
+      return { success: false, error: fetchError?.message || 'Record not found' }
+    }
+
     const { data, error } = await supabase
       .from('people_balances')
       .update(result.data)
@@ -456,6 +469,40 @@ export async function updatePeopleBalanceAction(
       .single()
 
     if (error) return { success: false, error: error.message }
+
+    // Try to update the associated transaction if it exists
+    if (oldRecord.account_id) {
+      const isOldInflow = oldRecord.subtype === 'borrow' || oldRecord.subtype === 'collect'
+      const oldExpectedType = isOldInflow ? 'income' : 'expense'
+      const oldExpectedNote = oldRecord.note ?? `People: ${oldRecord.subtype}`
+
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('type', oldExpectedType)
+        .eq('amount', oldRecord.amount)
+        .eq('transaction_date', oldRecord.transaction_date)
+        .eq(isOldInflow ? 'to_account_id' : 'from_account_id', oldRecord.account_id)
+        .eq('note', oldExpectedNote)
+        .limit(1)
+
+      if (txs && txs.length > 0) {
+        const isNewInflow = result.data.subtype === 'borrow' || result.data.subtype === 'collect'
+        await supabase
+          .from('transactions')
+          .update({
+            type: isNewInflow ? 'income' : 'expense',
+            amount: result.data.amount,
+            transaction_date: result.data.transaction_date,
+            note: result.data.note ?? `People: ${result.data.subtype}`,
+            from_account_id: isNewInflow ? null : result.data.account_id,
+            to_account_id: isNewInflow ? result.data.account_id : null,
+          })
+          .eq('id', txs[0].id)
+      }
+    }
+
     revalidatePath('/people')
     revalidatePath('/dashboard')
     return { success: true, data }
@@ -467,6 +514,19 @@ export async function updatePeopleBalanceAction(
 export async function deletePeopleBalanceAction(id: string): Promise<ActionResult> {
   try {
     const { supabase, user } = await getCurrentUser()
+    
+    // Fetch old record first to find the linked transaction
+    const { data: oldRecord, error: fetchError } = await supabase
+      .from('people_balances')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+      
+    if (fetchError || !oldRecord) {
+      return { success: false, error: fetchError?.message || 'Record not found' }
+    }
+
     const { error } = await supabase
       .from('people_balances')
       .delete()
@@ -474,6 +534,29 @@ export async function deletePeopleBalanceAction(id: string): Promise<ActionResul
       .eq('user_id', user.id)
 
     if (error) return { success: false, error: error.message }
+
+    // Try to delete the associated transaction if it exists
+    if (oldRecord.account_id) {
+      const isInflow = oldRecord.subtype === 'borrow' || oldRecord.subtype === 'collect'
+      const expectedType = isInflow ? 'income' : 'expense'
+      const expectedNote = oldRecord.note ?? `People: ${oldRecord.subtype}`
+
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('type', expectedType)
+        .eq('amount', oldRecord.amount)
+        .eq('transaction_date', oldRecord.transaction_date)
+        .eq(isInflow ? 'to_account_id' : 'from_account_id', oldRecord.account_id)
+        .eq('note', expectedNote)
+        .limit(1)
+
+      if (txs && txs.length > 0) {
+        await supabase.from('transactions').delete().eq('id', txs[0].id)
+      }
+    }
+
     revalidatePath('/people')
     revalidatePath('/dashboard')
     return { success: true, data: undefined }

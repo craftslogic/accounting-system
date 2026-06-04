@@ -10,6 +10,7 @@ import {
   createOpeningEntryAction,
   createPeopleTransactionAction,
   handleOverpaymentAction,
+  updatePeopleBalanceAction,
 } from '@/actions/people'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,7 +87,8 @@ export function BalanceForm({
 }: BalanceFormProps) {
   // ── Wizard state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<Step>(
-    preSelectedContactId ? (preSelectedSubtype ? 'details' : 'relationship') : 'person'
+    initialData || (preSelectedContactId && preSelectedSubtype) ? 'details' 
+    : preSelectedContactId ? 'relationship' : 'person'
   )
   const [contactId, setContactId] = useState(preSelectedContactId ?? initialData?.contact_id ?? '')
   const [relationship, setRelationship] = useState<RelationshipType>(
@@ -122,6 +124,10 @@ export function BalanceForm({
     createPeopleTransactionAction,
     initialStateTx
   )
+  const [updateState, updateFormAction, updatePending] = useActionState(
+    initialData ? updatePeopleBalanceAction.bind(null, initialData.id) : (() => Promise.resolve(initialStateTx)) as any,
+    initialStateTx
+  )
 
   // Handle opening entry success
   useEffect(() => {
@@ -145,9 +151,17 @@ export function BalanceForm({
     }
   }, [txState?.success, (txState as any)?.error])
 
+  // Handle update success
+  useEffect(() => {
+    if (updateState?.success) {
+      toast({ title: 'Record updated successfully', variant: 'success' as never })
+      onSuccess?.()
+    }
+  }, [updateState?.success])
+
   // ── Derived ───────────────────────────────────────────────────────────────
   const selectedContact = contacts.find((c) => c.id === contactId)
-  const pending = openingPending || txPending || isSubmitting
+  const pending = openingPending || txPending || updatePending || isSubmitting
 
   // When relationship changes, auto-adjust subtype if it mismatches the relationship
   useEffect(() => {
@@ -444,10 +458,12 @@ export function BalanceForm({
     // STEP 4: Details (amount, account, note, date)
     if (step === 'details') {
       const isExisting = mode === 'existing'
-      const action = isExisting ? openingFormAction : txFormAction
-      const error = isExisting
-        ? (!openingState.success ? openingState.error : undefined)
-        : (!txState.success ? txState.error : undefined)
+      const isEdit = !!initialData
+      const action = isEdit ? updateFormAction : (isExisting ? openingFormAction : txFormAction)
+      
+      const error = isEdit
+        ? (!updateState.success ? updateState.error : undefined)
+        : (isExisting ? (!openingState.success ? openingState.error : undefined) : (!txState.success ? txState.error : undefined))
 
       // Determine visible subtype options for "new" mode
       const subtypeOptions: { value: NewTxSubtype; label: string; description: string }[] =
@@ -467,7 +483,12 @@ export function BalanceForm({
         <form action={action} className="space-y-4">
           {/* Hidden fields */}
           <input type="hidden" name="contact_id" value={contactId} />
-          {isExisting ? (
+          {isEdit ? (
+            <>
+              <input type="hidden" name="type" value={initialData.type} />
+              {initialData.subtype && <input type="hidden" name="subtype" value={initialData.subtype} />}
+            </>
+          ) : isExisting ? (
             <input
               type="hidden"
               name="entry_type"
@@ -498,7 +519,7 @@ export function BalanceForm({
           </div>
 
           {/* Subtype selector for new transactions */}
-          {!isExisting && (
+          {!isExisting && !isEdit && (
             <div className="space-y-2">
               <Label>Transaction type</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -601,7 +622,7 @@ export function BalanceForm({
           </div>
 
           <div className="flex gap-2 pt-1">
-            {!preSelectedContactId && (
+            {!preSelectedContactId && !initialData && (
               <Button type="button" variant="outline" onClick={() => setStep('mode')} disabled={pending}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
@@ -614,7 +635,7 @@ export function BalanceForm({
               {pending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
               ) : (
-                isExisting ? 'Record Opening Balance' : 'Record Transaction'
+                isEdit ? 'Update Record' : (isExisting ? 'Record Opening Balance' : 'Record Transaction')
               )}
             </Button>
           </div>
@@ -637,7 +658,7 @@ export function BalanceForm({
   return (
     <div className="space-y-5">
       {/* Progress indicator */}
-      {!preSelectedContactId && (
+      {!preSelectedContactId && !initialData && (
         <div className="flex items-center gap-1">
           {steps.map((s, i) => (
             <div key={s.id} className="flex items-center gap-1 flex-1">
