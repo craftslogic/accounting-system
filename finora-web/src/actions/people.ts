@@ -16,13 +16,22 @@ async function getOrCreateSystemAccount(supabase: any, userId: string): Promise<
 
   if (extAccount) return extAccount.id
 
+  // Get the user's default currency from their existing accounts, fallback to PKR
+  const { data: userAccounts } = await supabase
+    .from('accounts')
+    .select('currency')
+    .eq('user_id', userId)
+    .limit(1)
+
+  const defaultCurrency = userAccounts && userAccounts.length > 0 ? userAccounts[0].currency : 'PKR'
+
   const { data: newExt, error } = await supabase
     .from('accounts')
     .insert({
       user_id: userId,
       name: 'System: External',
       type: 'custom',
-      currency: 'USD',
+      currency: defaultCurrency,
       is_archived: true,
     })
     .select('id')
