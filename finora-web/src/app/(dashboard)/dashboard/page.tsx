@@ -221,8 +221,8 @@ export default async function DashboardPage() {
 
       {/* 1. Big Available Balance Card */}
       <div className="rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-600 to-blue-900 p-8 relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-24 right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="hidden md:block absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="hidden md:block absolute -bottom-24 right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
         
         <div className="relative z-10">
           <p className="text-blue-100 font-medium mb-2">Available Balance</p>
