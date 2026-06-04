@@ -4,6 +4,7 @@ import { getCategories } from "@/actions/categories";
 import { formatCurrency } from "@/utils/currency";
 import { Plus } from "lucide-react";
 import { BudgetForm } from "@/components/budgets/BudgetForm";
+import { BudgetCard } from "@/components/budgets/BudgetCard";
 
 export default async function BudgetsPage() {
   const [budgets, accounts, categories] = await Promise.all([
@@ -29,33 +30,12 @@ export default async function BudgetsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {budgets.map((budget: any) => (
-            <div key={budget.id} className="rounded-2xl border border-white/10 bg-card p-5">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/5 rounded-lg text-xl">
-                    {budget.category?.icon || '🎯'}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{budget.category?.name || 'All Categories'}</h3>
-                    <p className="text-xs text-muted-foreground capitalize">{budget.period} Budget</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold">{formatCurrency(budget.amount)}</p>
-                  <p className="text-xs text-muted-foreground">Limit</p>
-                </div>
-              </div>
-              
-              <div className="space-y-2 mt-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Spent</span>
-                  <span className="font-medium">$0.00 (0%)</span>
-                </div>
-                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 w-[0%]" />
-                </div>
-              </div>
-            </div>
+            <BudgetCard 
+              key={budget.id} 
+              budget={budget} 
+              accounts={accounts} 
+              categories={categories.filter(c => c.type === 'expense')} 
+            />
           ))}
         </div>
       )}
