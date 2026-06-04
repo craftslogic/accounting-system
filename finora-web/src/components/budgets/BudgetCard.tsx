@@ -72,7 +72,7 @@ export function BudgetCard({ budget, accounts, categories }: { budget: any, acco
       <div className="space-y-2 mt-4">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Spent</span>
-          <span className="font-medium">$0.00 (0%)</span>
+          <span className="font-medium">Rs 0.00 (0%)</span>
         </div>
         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
           <div className="h-full bg-blue-500 w-[0%]" />
