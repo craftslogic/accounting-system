@@ -6,6 +6,32 @@ import { createClient } from '@/lib/supabase/server'
 import type { ActionResult, Contact, PeopleBalance, PeopleSubtype } from '@/types'
 import { calculateOutstanding } from '@/utils/people'
 
+async function getOrCreateSystemAccount(supabase: any, userId: string): Promise<string> {
+  const { data: extAccount } = await supabase
+    .from('accounts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', 'System: External')
+    .single()
+
+  if (extAccount) return extAccount.id
+
+  const { data: newExt, error } = await supabase
+    .from('accounts')
+    .insert({
+      user_id: userId,
+      name: 'System: External',
+      type: 'custom',
+      currency: 'USD',
+      is_archived: true,
+    })
+    .select('id')
+    .single()
+
+  if (error) throw new Error('Failed to create system account: ' + error.message)
+  return newExt.id
+}
+
 // ============================================================
 // Schemas
 // ============================================================
@@ -258,21 +284,20 @@ export async function createPeopleTransactionAction(
     const balanceType = subtypeToBalanceType(subtype)
 
     // Step 1: Create the account transaction
-    let txType: 'income' | 'expense'
+    let txType: 'transfer' | 'income' | 'expense' = 'transfer'
     let fromAccountId: string | null = null
     let toAccountId: string | null = null
 
-    // borrow: money comes IN → external transfer to account
-    // lend: money goes OUT → external transfer from account
-    // repay: money goes OUT → external transfer from account
-    // collect: money comes IN → external transfer to account
+    const sysAccountId = await getOrCreateSystemAccount(supabase, user.id)
     const isInflow = subtype === 'borrow' || subtype === 'collect'
     if (isInflow) {
-      txType = 'income'
+      txType = 'transfer'
+      fromAccountId = sysAccountId
       toAccountId = account_id
     } else {
-      txType = 'expense'
+      txType = 'transfer'
       fromAccountId = account_id
+      toAccountId = sysAccountId
     }
 
     const { error: txError } = await supabase.from('transactions').insert({
@@ -344,12 +369,13 @@ export async function handleOverpaymentAction(
     const isInflow = subtype === 'collect'
 
     // Account transaction for full repayment
+    const sysAccountId = await getOrCreateSystemAccount(supabase, user.id)
     await supabase.from('transactions').insert({
       user_id: user.id,
-      type: isInflow ? 'income' : 'expense',
+      type: 'transfer',
       amount: totalAmount,
-      from_account_id: isInflow ? null : accountId,
-      to_account_id: isInflow ? accountId : null,
+      from_account_id: isInflow ? sysAccountId : accountId,
+      to_account_id: isInflow ? accountId : sysAccountId,
       note: note ?? `People: ${subtype} (with overpayment conversion)`,
       transaction_date: transactionDate,
     })
@@ -473,31 +499,30 @@ export async function updatePeopleBalanceAction(
     // Try to update the associated transaction if it exists
     if (oldRecord.account_id) {
       const isOldInflow = oldRecord.subtype === 'borrow' || oldRecord.subtype === 'collect'
-      const oldExpectedType = isOldInflow ? 'income' : 'expense'
-      const oldExpectedNote = oldRecord.note ?? `People: ${oldRecord.subtype}`
-
+      
       const { data: txs } = await supabase
         .from('transactions')
         .select('id')
         .eq('user_id', user.id)
-        .eq('type', oldExpectedType)
+        .in('type', ['income', 'expense', 'transfer'])
         .eq('amount', oldRecord.amount)
         .eq('transaction_date', oldRecord.transaction_date)
         .eq(isOldInflow ? 'to_account_id' : 'from_account_id', oldRecord.account_id)
-        .eq('note', oldExpectedNote)
         .limit(1)
 
       if (txs && txs.length > 0) {
         const isNewInflow = result.data.subtype === 'borrow' || result.data.subtype === 'collect'
+        const sysAccountId = await getOrCreateSystemAccount(supabase, user.id)
+        
         await supabase
           .from('transactions')
           .update({
-            type: isNewInflow ? 'income' : 'expense',
+            type: 'transfer',
             amount: result.data.amount,
             transaction_date: result.data.transaction_date,
             note: result.data.note ?? `People: ${result.data.subtype}`,
-            from_account_id: isNewInflow ? null : result.data.account_id,
-            to_account_id: isNewInflow ? result.data.account_id : null,
+            from_account_id: isNewInflow ? sysAccountId : result.data.account_id,
+            to_account_id: isNewInflow ? result.data.account_id : sysAccountId,
           })
           .eq('id', txs[0].id)
       }
@@ -538,18 +563,15 @@ export async function deletePeopleBalanceAction(id: string): Promise<ActionResul
     // Try to delete the associated transaction if it exists
     if (oldRecord.account_id) {
       const isInflow = oldRecord.subtype === 'borrow' || oldRecord.subtype === 'collect'
-      const expectedType = isInflow ? 'income' : 'expense'
-      const expectedNote = oldRecord.note ?? `People: ${oldRecord.subtype}`
 
       const { data: txs } = await supabase
         .from('transactions')
         .select('id')
         .eq('user_id', user.id)
-        .eq('type', expectedType)
+        .in('type', ['income', 'expense', 'transfer'])
         .eq('amount', oldRecord.amount)
         .eq('transaction_date', oldRecord.transaction_date)
         .eq(isInflow ? 'to_account_id' : 'from_account_id', oldRecord.account_id)
-        .eq('note', expectedNote)
         .limit(1)
 
       if (txs && txs.length > 0) {
