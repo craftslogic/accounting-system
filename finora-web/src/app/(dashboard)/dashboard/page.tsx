@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/utils/currency'
 import { getCurrentMonthRange } from '@/utils/dates'
+import { rewritePeopleTransactionsToTransfers } from '@/utils/transactions'
 import { AccountCard } from '@/components/accounts/AccountCard'
 import { TransactionRow } from '@/components/transactions/TransactionRow'
 import { FundsDashboardWidget } from '@/components/funds/FundsDashboardWidget'
@@ -169,6 +170,13 @@ export default async function DashboardPage() {
     }
   }
   const netSavings = monthlyIncome - monthlyExpenses
+
+  // Rewrite recent transactions to 'transfer' if they are people-related
+  // We use the already fetched monthlyPeopleBalances. It covers most recent txs.
+  const recentTxs = rewritePeopleTransactionsToTransfers(
+    recentTransactions.data ?? [],
+    monthlyPeopleBalances.data ?? []
+  ) as TransactionWithDetails[]
 
   // Budgets
   const totalMonthlyLimit = (budgetsData.data ?? []).reduce((sum, b) => sum + parseFloat(String(b.amount)), 0)
@@ -406,13 +414,13 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="rounded-2xl border border-white/10 bg-card overflow-hidden">
-            {!recentTransactions.data?.length ? (
+            {!recentTxs.length ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground text-sm">No transactions yet</p>
               </div>
             ) : (
               <div className="divide-y divide-white/5">
-                {(recentTransactions.data as TransactionWithDetails[]).map((tx) => (
+                {recentTxs.map((tx) => (
                   <TransactionRow key={tx.id} transaction={tx} />
                 ))}
               </div>
